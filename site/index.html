@@ -3,44 +3,64 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#241c17">
+    <meta name="theme-color" content="#D33512">
     <meta name="description" content="Shawn 的内容总看板：四时日月、隔洋看世界、大蒜粒机研所。数据来自本仓库的 GitHub Issues。">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="内容总看板">
     <title>内容总看板</title>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem("content-board:theme");
+          var theme = saved === "dark" || saved === "light" ? saved : (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+          document.documentElement.setAttribute("data-theme", theme);
+        } catch (e) {
+          document.documentElement.setAttribute("data-theme", "light");
+        }
+      })();
+    </script>
+    <link rel="stylesheet" href="./css/tokens.css">
     <link rel="stylesheet" href="./css/app.css">
   </head>
   <body>
     <a class="skip" href="#board">跳到看板</a>
-    <header class="mast">
-      <div class="mast-id">
-        <span class="seal" aria-hidden="true">看</span>
-        <div>
-          <h1>内容总看板</h1>
-          <p class="lede">四时日月 · 隔洋看世界 · 大蒜粒机研所</p>
-        </div>
-      </div>
-      <div class="mast-actions">
-        <span id="mode-pill" class="pill">只读</span>
-        <button id="refresh" type="button">刷新</button>
-        <button id="create" type="button">新建</button>
-        <button id="settings-open" type="button">设置</button>
-      </div>
+    <div class="shell">
       <div id="progress" class="progress" hidden></div>
-    </header>
+      <header class="mast">
+        <div class="mast-id">
+          <span class="brand" aria-hidden="true">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="M2 12h2"></path><path d="M20 12h2"></path></svg>
+          </span>
+          <div class="mast-sub">
+            <h1>内容总看板</h1>
+            <p id="mast-date" class="date-pill">北京时间</p>
+          </div>
+        </div>
+        <div class="mast-actions">
+          <span id="mode-pill" class="mode-pill">只读</span>
+          <button id="theme-toggle" class="icon-btn" type="button" aria-label="切换到深色"></button>
+          <button id="refresh" class="icon-btn" type="button" aria-label="刷新">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M8 16H3v5"></path></svg>
+          </button>
+          <button id="settings-open" class="icon-btn" type="button" aria-label="设置">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          </button>
+          <button id="create" type="button">新建</button>
+        </div>
+      </header>
 
-    <p id="demo-banner" class="demo-banner" hidden>
-      正在看示例数据。拖拽、新建和评论只留在这个页面，不会写入 GitHub。
-    </p>
+      <p id="demo-banner" class="demo-banner" hidden>
+        正在看示例数据。拖拽、新建和评论只留在这个页面，不会写入 GitHub。
+      </p>
 
-    <section id="summary" class="summary" aria-label="状态数量"></section>
-    <section id="attention" class="attention" aria-label="需要你处理"></section>
+      <section id="attention" class="hero" aria-label="需要你处理"></section>
+      <section id="summary" class="lane-row" aria-label="栏目"></section>
 
-    <div class="tools">
-      <div class="filters">
+      <div class="toolbar">
         <label class="search">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.34-4.34"></path></svg>
           <span class="sr">搜索</span>
           <input id="filter-q" type="search" placeholder="搜索标题或说明" autocomplete="off" enterkeyhint="search">
         </label>
@@ -49,25 +69,29 @@
           <span>负责</span>
           <select id="filter-owner" aria-label="按负责筛选"></select>
         </label>
-        <button id="clear-filters" type="button" hidden>清除筛选</button>
-        <span id="result-count" class="result-count"></span>
+        <div class="toolbar-meta">
+          <button id="clear-filters" type="button" hidden>清除筛选</button>
+          <span id="result-count" class="result-count"></span>
+        </div>
       </div>
+
+      <main id="board" class="board" aria-label="看板">
+        <p class="empty">正在读取议题…</p>
+      </main>
+
+      <footer class="colophon">
+        <p id="sync-line">正在连接 GitHub…</p>
+        <p id="error-line" class="error-line" hidden></p>
+        <p class="fine">关闭的议题是归档，不会出现在这里。进度写在议题评论里。Token 只存在这台浏览器，页面不加载第三方脚本。</p>
+        <p class="fine links">
+          <a href="https://github.com/howardrock88/content-board" target="_blank" rel="noopener noreferrer">仓库</a>
+          <a href="https://github.com/howardrock88/content-board/blob/main/BOT_GUIDE.md" target="_blank" rel="noopener noreferrer">机器人说明</a>
+          <a href="./styleguide.html">设计语言</a>
+        </p>
+      </footer>
     </div>
 
-    <div id="status-switch" class="status-switch" role="tablist" aria-label="状态"></div>
-    <main id="board" class="board" aria-label="看板">
-      <p class="empty">正在读取议题…</p>
-    </main>
-
-    <footer class="colophon">
-      <p id="sync-line">正在连接 GitHub…</p>
-      <p id="error-line" class="error-line" hidden></p>
-      <p class="fine">关闭的议题是归档，不会出现在这里。进度写在议题评论里。Token 只存在这台浏览器，页面不加载第三方脚本。</p>
-      <p class="fine links">
-        <a href="https://github.com/howardrock88/content-board" target="_blank" rel="noopener noreferrer">仓库</a>
-        <a href="https://github.com/howardrock88/content-board/blob/main/BOT_GUIDE.md" target="_blank" rel="noopener noreferrer">机器人说明</a>
-      </p>
-    </footer>
+    <div id="status-switch" class="tabbar" role="tablist" aria-label="状态"></div>
 
     <dialog id="drawer" class="drawer" aria-label="内容详情">
       <div class="drawer-bar">

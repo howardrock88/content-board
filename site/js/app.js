@@ -16,6 +16,7 @@ import {
   setToken,
 } from "./api.js";
 import { buildDemo } from "./demo.js";
+import { icon, LANE_ICON, STATUS_ICON } from "./icons.js";
 import {
   absoluteTime,
   attentionKind,
@@ -163,6 +164,23 @@ function preferredMobileStatus() {
   return "待做";
 }
 
+function beijingDate() {
+  return new Intl.DateTimeFormat("zh-CN", {
+    timeZone: "Asia/Shanghai",
+    month: "long",
+    day: "numeric",
+    weekday: "short",
+  }).format(new Date());
+}
+
+function paintTheme() {
+  const button = document.querySelector("#theme-toggle");
+  if (!button) return;
+  const dark = document.documentElement.dataset.theme === "dark";
+  button.replaceChildren(icon(dark ? "sun" : "moon"));
+  button.setAttribute("aria-label", dark ? "切换到浅色" : "切换到深色");
+}
+
 function renderChrome() {
   els.demoBanner.hidden = !state.demo;
   els.mode.textContent = state.demo ? "示例" : state.writable ? "可写入" : "只读";
@@ -178,6 +196,9 @@ function renderChrome() {
   els.error.hidden = !state.error;
   els.error.textContent = state.error || "";
   els.sync.textContent = syncLine();
+  const date = document.querySelector("#mast-date");
+  if (date) date.textContent = `${beijingDate()} · 北京`;
+  paintTheme();
 }
 
 function syncLine() {
@@ -192,41 +213,76 @@ function syncLine() {
   return `上次同步 ${when}${rate}${mode}${slow}${trunc}${comments}`;
 }
 
-function renderSummary(visible) {
+function countedIssues() {
+  const grouped = commentsGrouped();
+  return state.issues.filter((issue) => matchesFilters(issue, { ...state.filters, lane: "all" }, reasonFor(issue, grouped)));
+}
+
+function avatar(name) {
+  const letter = Array.from(name || "?")[0] || "?";
+  return h("span", { class: name === "Shawn" ? "avatar is-shawn" : "avatar", title: name }, letter);
+}
+
+function laneOf(issue) {
+  return issue.lanes[0] || "";
+}
+
+function renderSummary() {
+  const pool = countedIssues();
   els.summary.replaceChildren();
-  for (const status of STATUSES) {
-    const count = visible.filter((issue) => columnFor(issue) === status).length;
-    const button = h("button", { type: "button", class: `stat${state.mobileStatus === status ? " is-current" : ""}` }, [
-      h("b", {}, String(count)),
-      h("span", {}, status),
+  for (const lane of LANES) {
+    const count = pool.filter((issue) => issue.lanes.includes(lane.label)).length;
+    const button = h("button", {
+      type: "button",
+      class: `lane-card${state.filters.lane === lane.label ? " is-on" : ""}`,
+      "data-lane": lane.label,
+    }, [
+      icon(LANE_ICON[lane.label]),
+      h("span", {}, [h("strong", {}, lane.name), h("small", {}, lane.platform.split("·")[0].trim())]),
+      h("b", { class: "lane-total" }, String(count)),
     ]);
-    button.addEventListener("click", () => jumpTo(status));
+    button.addEventListener("click", () => {
+      state.filters.lane = state.filters.lane === lane.label ? "all" : lane.label;
+      paintLanes();
+      renderLists();
+    });
     els.summary.append(button);
   }
 }
 
 function renderAttention(visible) {
   const items = visible.filter((issue) => attentionKind(issue)).sort(byAttention);
-  els.attention.className = items.length ? "attention is-hot" : "attention is-clear";
+  els.attention.classList.toggle("is-clear", !items.length);
   els.attention.replaceChildren();
-  const head = h("div", { class: "attention-head" }, [
+  const copy = h("div", { class: "hero-copy" }, [
+    h("p", { class: "kicker" }, "今天先看这些"),
     h("h2", {}, "需要你处理"),
-    h("span", {}, items.length ? String(items.length) : "现在没有"),
+    h("p", { class: "hero-count" }, String(items.length)),
+    h("p", { class: "hero-note" }, items.length ? "卡住、待验收，或负责是 Shawn。" : "现在没有要你处理的。"),
   ]);
-  els.attention.append(head);
+  els.attention.append(copy);
   if (!items.length) return;
-  const list = h("div", { class: "attention-list" });
-  for (const issue of items) {
+  const [first, ...rest] = items;
+  const feature = renderCard(first);
+  feature.classList.add("card-feature");
+  feature.querySelector("[data-drag]")?.remove();
+  feature.addEventListener("click", (event) => {
+    if (event.target.closest("[data-drag]")) return;
+    openDrawer(first.number);
+  });
+  els.attention.append(feature);
+  if (!rest.length) return;
+  const queue = h("div", { class: "hero-queue" });
+  for (const issue of rest) {
     const kind = attentionKind(issue);
-    const label = kind === "Shawn" ? "负责 Shawn" : kind;
-    const button = h("button", { type: "button", class: `attention-card kind-${kind}` }, [
-      h("span", { class: "kind" }, label),
+    const button = h("button", { type: "button", class: "queue-item" }, [
+      h("span", { class: "pill", "data-tone": kind === "Shawn" ? "待验收" : kind }, kind === "Shawn" ? "Shawn" : kind),
       h("strong", {}, issue.title),
     ]);
     button.addEventListener("click", () => openDrawer(issue.number));
-    list.append(button);
+    queue.append(button);
   }
-  els.attention.append(list);
+  els.attention.append(queue);
 }
 
 function renderStatusSwitch(visible) {
@@ -237,12 +293,12 @@ function renderStatusSwitch(visible) {
       "button",
       {
         type: "button",
-        class: `status-tab${state.mobileStatus === status ? " is-current" : ""}`,
+        class: state.mobileStatus === status ? "is-current" : "",
         role: "tab",
         "data-status": status,
         "aria-selected": state.mobileStatus === status ? "true" : "false",
       },
-      [status, h("small", {}, String(count))],
+      [icon(STATUS_ICON[status]), h("span", {}, status), h("small", {}, String(count))],
     );
     button.addEventListener("click", () => jumpTo(status));
     els.statusSwitch.append(button);
@@ -261,7 +317,20 @@ function renderBoard(visible) {
   const tops = new Map([...els.board.querySelectorAll(".column")].map((column) => [column.dataset.status, column.scrollTop]));
   els.board.replaceChildren();
   if (state.loading && !state.issues.length) {
-    els.board.append(h("p", { class: "empty" }, "正在读取议题…"));
+    for (const status of STATUSES) {
+      const column = h("section", {
+        class: `column${state.mobileStatus === status ? " is-current" : ""}`,
+        "data-status": status,
+      });
+      column.append(
+        h("header", { class: "column-head" }, [
+          h("span", { class: "mark" }, icon(STATUS_ICON[status])),
+          h("h2", {}, status),
+        ]),
+        h("div", { class: "column-list" }, [h("div", { class: "skeleton" }), h("div", { class: "skeleton" })]),
+      );
+      els.board.append(column);
+    }
     return;
   }
   if (!state.issues.length) {
@@ -277,12 +346,13 @@ function renderBoard(visible) {
     });
     column.append(
       h("header", { class: "column-head" }, [
-        h("h2", {}, [h("span", { class: "status-dot", "data-status": status }), status]),
+        h("span", { class: "mark" }, icon(STATUS_ICON[status])),
+        h("h2", {}, status),
         h("span", { class: "count-badge" }, String(items.length)),
       ]),
     );
     const list = h("div", { class: "column-list" });
-    if (!items.length) list.append(h("p", { class: "column-empty" }, filtersActive() ? "没有匹配的条目" : "空"));
+    if (!items.length) list.append(h("p", { class: "column-empty" }, filtersActive() ? "没有匹配的条目" : "这一列是空的"));
     for (const issue of items) list.append(renderCard(issue));
     column.append(list);
     els.board.append(column);
@@ -294,14 +364,18 @@ function renderBoard(visible) {
 }
 
 function emptyState() {
-  const wrap = h("div", { class: "empty" });
+  const wrap = h("div", { class: "empty-state" });
+  wrap.append(h("div", { class: "empty-mark" }, icon(state.error ? "octagon-alert" : "inbox")));
   if (state.error) {
-    wrap.append(h("p", {}, state.error));
+    wrap.append(h("h2", {}, "没有连上"), h("p", {}, state.error));
     return wrap;
   }
   wrap.append(
-    h("p", {}, "看板上还没有进行中的内容。"),
-    h("p", {}, "在本仓库新建 Issue，打上栏目、状态、负责标签，刷新后就会出现。关闭的 Issue 会归档。"),
+    h("h2", {}, "看板上还是空的"),
+    h("p", {}, "新建一条 Issue，打上栏目、状态和负责。关闭的议题会归档，不会出现在这里。"),
+    h("p", {}, [
+      h("a", { class: "btn-primary", href: "?demo=1" }, "先看示例"),
+    ]),
     h("p", {}, [
       h(
         "a",
@@ -313,7 +387,6 @@ function emptyState() {
         "机器人怎么写议题",
       ),
     ]),
-    h("p", {}, [h("a", { href: "?demo=1" }, "先看示例布局")]),
   );
   return wrap;
 }
@@ -321,40 +394,35 @@ function emptyState() {
 function renderCard(issue) {
   const column = columnFor(issue);
   const reason = column === "卡住" ? reasonFor(issue) : "";
+  const lane = laneOf(issue);
+  const meta = laneMeta(lane);
   const card = h("article", {
-    class: `card${column === "卡住" ? " is-stuck" : ""}`,
+    class: "card",
     "data-id": issue.number,
+    "data-lane": lane || null,
     tabindex: "0",
   });
-  const tags = h("div", { class: "tags" });
+  const cap = h("div", { class: "card-cap" }, [
+    icon(LANE_ICON[lane] || "inbox"),
+    h("span", { class: "cap-name" }, meta ? meta.name : "未分栏目"),
+  ]);
+  if (issue.missingStatus) cap.append(h("span", { class: "pill is-flag" }, "未标状态"));
+  else if (issue.duplicateStatus) cap.append(h("span", { class: "pill is-flag" }, "状态重复"));
+  else cap.append(h("span", { class: "pill", "data-tone": column }, column));
   if (state.writable) {
-    tags.append(h("button", { type: "button", class: "drag-handle", "data-drag": "1", "aria-label": "拖拽以更改状态", title: "拖拽以更改状态" }, "拖"));
+    cap.append(h("button", { type: "button", class: "drag-handle", "data-drag": "1", "aria-label": "拖拽以更改状态", title: "拖拽以更改状态" }, icon("grip-vertical")));
   }
-  if (!issue.lanes.length) tags.append(h("span", { class: "tag tag-missing" }, "未分栏目"));
-  for (const label of issue.lanes) {
-    const meta = laneMeta(label);
-    tags.append(h("span", { class: "tag", "data-lane": label, title: meta ? meta.platform : label }, meta ? meta.name : label));
-  }
-  if (issue.missingStatus) tags.append(h("span", { class: "flag" }, "未标状态"));
-  if (issue.duplicateStatus) tags.append(h("span", { class: "flag" }, "状态重复"));
-  card.append(
-    h("div", { class: "card-top" }, [
-      tags,
-      h("time", { datetime: issue.updatedAt, title: absoluteTime(issue.updatedAt) }, relativeTime(issue.updatedAt)),
-    ]),
-    h("h3", { class: "card-title" }, issue.title),
-  );
-  if (column === "卡住") card.append(h("p", { class: "stuck-reason", title: reason }, reason ? `原因：${reason}` : "原因：未填写"));
+  card.append(cap, h("h3", { class: "card-title" }, issue.title));
+  if (column === "卡住") card.append(h("p", { class: "callout" }, reason || "还没有写卡住原因"));
   const owners = issue.owners.length ? issue.owners : ["未指定"];
-  const meta = h("div", { class: "card-meta" });
-  meta.append(h("span", {}, `#${issue.number}`));
-  const people = h("span", {});
-  owners.forEach((name, index) => {
-    if (index) people.append("、");
-    people.append(h("span", { class: name === "Shawn" ? "owner is-shawn" : "owner" }, name));
-  });
-  meta.append(people);
-  card.append(meta);
+  const people = h("span", { class: "avatars" });
+  owners.slice(0, 3).forEach((name) => people.append(avatar(name)));
+  const foot = h("div", { class: "card-foot" }, [
+    people,
+    h("span", { class: "who-name" }, owners[0]),
+    h("time", { datetime: issue.updatedAt, title: absoluteTime(issue.updatedAt) }, relativeTime(issue.updatedAt)),
+  ]);
+  card.append(foot);
   return card;
 }
 
@@ -384,18 +452,19 @@ function fillDrawer(number) {
   const links = extractOutputLinks(issue.body);
   const content = els.drawerContent;
   content.replaceChildren();
-  const tags = h("div", { class: "tags" });
+  const tags = h("div", { class: "tag-row" });
   for (const label of issue.lanes) {
     const meta = laneMeta(label);
-    tags.append(h("span", { class: "tag", "data-lane": label }, meta ? meta.name : label));
+    tags.append(h("span", { class: "chip is-on", "data-lane": label }, meta ? meta.name : label));
   }
+  tags.append(h("span", { class: "pill", "data-tone": column }, column));
   content.append(
     h("p", { class: "drawer-kicker" }, `#${issue.number} · ${absoluteTime(issue.updatedAt)}`),
     h("h2", {}, issue.title),
     tags,
   );
   if (column === "卡住") {
-    content.append(h("p", { class: "reason-callout" }, reason ? `卡住：${reason}` : "卡住：还没有写原因"));
+    content.append(h("p", { class: "callout" }, reason || "还没有写卡住原因"));
   }
   content.append(h("h3", { class: "section-label" }, "移动到"));
   const moves = h("div", { class: "move-row" });
@@ -695,7 +764,7 @@ function setupFilters() {
   els.lanes.append(all);
   for (const lane of LANES) {
     const button = h("button", { type: "button", class: "chip", "data-lane": lane.label }, [
-      h("span", { class: "dot", style: `background:${dotColor(lane.label)}` }),
+      icon(LANE_ICON[lane.label]),
       lane.name,
     ]);
     button.addEventListener("click", () => {
@@ -710,12 +779,6 @@ function setupFilters() {
   fillSelect(document.querySelector("#new-lane"), LANES.map((lane) => [lane.label, lane.name]), "选择栏目");
   fillSelect(document.querySelector("#new-owner"), OWNERS.map((owner) => [owner, owner]), "选择负责");
   paintLanes();
-}
-
-function dotColor(label) {
-  if (label.endsWith("四时日月")) return "#9a3412";
-  if (label.endsWith("隔洋看世界")) return "#1d4ed8";
-  return "#6d28d9";
 }
 
 function paintLanes() {
@@ -886,6 +949,12 @@ function bootFilters() {
 }
 
 function bootDialogs() {
+  document.querySelector("#theme-toggle").addEventListener("click", () => {
+    const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem("content-board:theme", next); } catch { /* private mode */ }
+    paintTheme();
+  });
   document.querySelector("#settings-open").addEventListener("click", () => openSettings());
   document.querySelector("#create").addEventListener("click", () => {
     if (!state.writable) {

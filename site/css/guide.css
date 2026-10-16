@@ -1,0 +1,90 @@
+html.guide,
+html.guide body {
+  height: auto;
+  overflow: auto;
+}
+
+html.guide .page {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  padding: 28px 20px 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.guide-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+}
+
+.guide-head h1 { font-size: 34px; line-height: 1.2; font-weight: 700; }
+
+.guide-section h2 { font-size: 22px; line-height: 1.3; font-weight: 650; margin-bottom: 12px; }
+
+.swatches, .radius-row, .shadow-row, .type-stack, .component-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.swatches { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+.swatch {
+  border-radius: var(--radius-14);
+  overflow: hidden;
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.swatch i {
+  display: block;
+  height: 64px;
+}
+
+.swatch span, .swatch b {
+  display: block;
+  padding: 8px 10px 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.swatch b { padding-bottom: 10px; color: var(--ink-soft); font-weight: 500; }
+
+.radius-row, .shadow-row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+.radius-box, .shadow-box {
+  height: 84px;
+  background: var(--primary);
+  color: var(--primary-ink);
+  display: grid;
+  place-items: end start;
+  padding: 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.shadow-box { background: var(--surface); color: var(--ink); }
+
+.type-stack { gap: 8px; }
+
+.component-grid { grid-template-columns: 1.1fr 0.9fr; align-items: start; }
+
+.sheet-frame {
+  border-radius: var(--radius-28);
+  background: var(--surface);
+  box-shadow: var(--shadow-overlay);
+  overflow: hidden;
+}
+
+.tabbar-static {
+  position: static;
+  display: flex;
+  height: 64px;
+  margin-top: 12px;
+}
+
+@media (max-width: 800px) {
+  .swatches, .radius-row, .shadow-row, .component-grid { grid-template-columns: 1fr 1fr; }
+}

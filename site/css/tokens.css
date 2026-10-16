@@ -1,0 +1,71 @@
+/* Lumen tokens. Values are specified in DESIGN.md. */
+
+:root,
+html[data-theme="light"] {
+  color-scheme: light;
+  --canvas: #e4e6ee;
+  --surface: #ffffff;
+  --surface-2: #f3f4f8;
+  --ink: #14151a;
+  --ink-soft: #5c6170;
+  --line: #d5d8e2;
+  --primary: #d33512;
+  --primary-ink: #ffffff;
+  --primary-hover: #b82c0e;
+  --lane-sun: #f6b000;
+  --lane-sun-ink: #1a1404;
+  --lane-ocean: #005be0;
+  --lane-ocean-ink: #ffffff;
+  --lane-lab: #d31262;
+  --lane-lab-ink: #ffffff;
+  --status-todo: #3c2fcb;
+  --status-doing: #0b7a68;
+  --status-stuck: #e10600;
+  --status-review: #7a3ff2;
+  --status-done: #0e7a32;
+  --status-ink: #ffffff;
+  --hero-ink: #ffffff;
+  --glass: rgba(255, 255, 255, 0.86);
+  --overlay: rgba(12, 13, 18, 0.48);
+  --shadow-card: 0 1px 2px rgba(28, 16, 12, 0.06), 0 8px 24px rgba(28, 16, 12, 0.08);
+  --shadow-raised: 0 2px 6px rgba(28, 16, 12, 0.1), 0 18px 40px rgba(28, 16, 12, 0.16);
+  --shadow-overlay: 0 24px 64px rgba(12, 8, 8, 0.28);
+  --radius-8: 8px;
+  --radius-14: 14px;
+  --radius-20: 20px;
+  --radius-28: 28px;
+  --radius-pill: 999px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --font: "PingFang SC", "HarmonyOS Sans", "Noto Sans SC", "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dur-fast: 120ms;
+  --dur: 160ms;
+  --dur-slow: 220ms;
+  --blur: 18px;
+  --hero: radial-gradient(120% 140% at 100% 0%, #d33512 0%, #6b1430 46%, #1a1020 74%);
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --canvas: #0c0d12;
+  --surface: #171920;
+  --surface-2: #22242c;
+  --ink: #f4f5f8;
+  --ink-soft: #a7abba;
+  --line: #343744;
+  --primary: #ff5a32;
+  --primary-ink: #1a1008;
+  --primary-hover: #ff7a58;
+  --glass: rgba(23, 25, 32, 0.86);
+  --overlay: rgba(0, 0, 0, 0.56);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.28), 0 8px 24px rgba(0, 0, 0, 0.32);
+  --shadow-raised: 0 2px 6px rgba(0, 0, 0, 0.36), 0 18px 40px rgba(0, 0, 0, 0.42);
+  --shadow-overlay: 0 24px 64px rgba(0, 0, 0, 0.5);
+}
