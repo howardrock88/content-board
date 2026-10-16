@@ -1,0 +1,47 @@
+# Deploys the static board to GitHub Pages.
+# enablement: true asks the API to create the Pages site (source = GitHub Actions).
+# The default GITHUB_TOKEN cannot create a site: that call needs administration:write,
+# which Actions tokens are not allowed to hold. If this job fails with
+# "Get Pages site failed" or HTTP 404, enable Pages once in the repo:
+# Settings → Pages → Build and deployment → Source → GitHub Actions
+# Then re-run this workflow. Later pushes to main deploy on their own.
+
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

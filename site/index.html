@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#241c17">
+    <meta name="description" content="Shawn 的内容总看板：四时日月、隔洋看世界、大蒜粒机研所。数据来自本仓库的 GitHub Issues。">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="内容总看板">
+    <title>内容总看板</title>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="./css/app.css">
+  </head>
+  <body>
+    <a class="skip" href="#board">跳到看板</a>
+    <header class="mast">
+      <div class="mast-id">
+        <span class="seal" aria-hidden="true">看</span>
+        <div>
+          <h1>内容总看板</h1>
+          <p class="lede">四时日月 · 隔洋看世界 · 大蒜粒机研所</p>
+        </div>
+      </div>
+      <div class="mast-actions">
+        <span id="mode-pill" class="pill">只读</span>
+        <button id="refresh" type="button">刷新</button>
+        <button id="create" type="button">新建</button>
+        <button id="settings-open" type="button">设置</button>
+      </div>
+      <div id="progress" class="progress" hidden></div>
+    </header>
+
+    <p id="demo-banner" class="demo-banner" hidden>
+      正在看示例数据。拖拽、新建和评论只留在这个页面，不会写入 GitHub。
+    </p>
+
+    <section id="summary" class="summary" aria-label="状态数量"></section>
+    <section id="attention" class="attention" aria-label="需要你处理"></section>
+
+    <div class="tools">
+      <div class="filters">
+        <label class="search">
+          <span class="sr">搜索</span>
+          <input id="filter-q" type="search" placeholder="搜索标题或说明" autocomplete="off" enterkeyhint="search">
+        </label>
+        <div id="filter-lanes" class="chips" role="group" aria-label="按栏目筛选"></div>
+        <label class="owner-filter">
+          <span>负责</span>
+          <select id="filter-owner" aria-label="按负责筛选"></select>
+        </label>
+        <button id="clear-filters" type="button" hidden>清除筛选</button>
+        <span id="result-count" class="result-count"></span>
+      </div>
+    </div>
+
+    <div id="status-switch" class="status-switch" role="tablist" aria-label="状态"></div>
+    <main id="board" class="board" aria-label="看板">
+      <p class="empty">正在读取议题…</p>
+    </main>
+
+    <footer class="colophon">
+      <p id="sync-line">正在连接 GitHub…</p>
+      <p id="error-line" class="error-line" hidden></p>
+      <p class="fine">关闭的议题是归档，不会出现在这里。进度写在议题评论里。Token 只存在这台浏览器，页面不加载第三方脚本。</p>
+      <p class="fine links">
+        <a href="https://github.com/howardrock88/content-board" target="_blank" rel="noopener noreferrer">仓库</a>
+        <a href="https://github.com/howardrock88/content-board/blob/main/BOT_GUIDE.md" target="_blank" rel="noopener noreferrer">机器人说明</a>
+      </p>
+    </footer>
+
+    <dialog id="drawer" class="drawer" aria-label="内容详情">
+      <div class="drawer-bar">
+        <button id="drawer-close" type="button">关闭</button>
+        <span id="drawer-demo-note" class="pill" hidden>示例</span>
+        <a id="drawer-github" href="https://github.com/howardrock88/content-board" target="_blank" rel="noopener noreferrer">在 GitHub 打开</a>
+      </div>
+      <article id="drawer-content" class="drawer-scroll"></article>
+      <form id="comment-form" class="comment-form">
+        <label for="comment-body">进度评论</label>
+        <textarea id="comment-body" rows="3" maxlength="4000" placeholder="写这次做了什么、下一步是什么"></textarea>
+        <button id="comment-submit" type="submit">发表评论</button>
+      </form>
+    </dialog>
+
+    <dialog id="settings" aria-labelledby="settings-title">
+      <form id="settings-form">
+        <div class="dialog-head">
+          <h2 id="settings-title">设置</h2>
+          <button type="button" data-close>关闭</button>
+        </div>
+        <p id="settings-lead">只读时可以浏览、筛选、搜索。粘贴一个只用于本仓库的 fine-grained personal access token（Issues 读写）后，可以拖拽改状态、新建条目、发表评论。</p>
+        <p class="hint">Token 只写进这台浏览器的 localStorage，不会进仓库，也不会发到 GitHub 以外的服务器。不要在公共电脑上保存。</p>
+        <label for="token-input">Token</label>
+        <input id="token-input" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…">
+        <p id="settings-message" class="hint" role="status"></p>
+        <div class="dialog-actions">
+          <button id="token-clear" type="button">清除</button>
+          <button type="submit">保存并检查</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="composer" aria-labelledby="composer-title">
+      <form id="composer-form">
+        <div class="dialog-head">
+          <h2 id="composer-title">新建内容</h2>
+          <button type="button" data-close>关闭</button>
+        </div>
+        <label for="new-title">标题</label>
+        <input id="new-title" required maxlength="120" placeholder="内容标题">
+        <label for="new-lane">栏目</label>
+        <select id="new-lane" required></select>
+        <label for="new-owner">负责</label>
+        <select id="new-owner" required></select>
+        <label for="new-summary">说明</label>
+        <textarea id="new-summary" rows="4" placeholder="可选。留空会放上正文模板，含产出链接和卡住原因两节。"></textarea>
+        <p class="hint">新建的议题状态是待做。关闭议题即归档，不要删除。</p>
+        <div class="dialog-actions">
+          <button type="button" data-close>取消</button>
+          <button type="submit">创建</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="prompt" aria-labelledby="prompt-title">
+      <form id="prompt-form">
+        <h2 id="prompt-title"></h2>
+        <p id="prompt-text"></p>
+        <textarea id="prompt-input" rows="4"></textarea>
+        <p id="prompt-hint" class="hint"></p>
+        <div class="dialog-actions">
+          <button id="prompt-cancel" type="button">取消</button>
+          <button id="prompt-ok" type="submit">确定</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="toast" class="toast" role="status" hidden></div>
+    <noscript><p class="noscript">需要启用 JavaScript。看板在浏览器里直接读取 GitHub Issues。</p></noscript>
+    <script type="module" src="./js/app.js"></script>
+  </body>
+</html>

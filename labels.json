@@ -1,0 +1,87 @@
+[
+  {
+    "name": "栏目/四时日月",
+    "color": "9A3412",
+    "description": "抖音 · 节气养生视频"
+  },
+  {
+    "name": "栏目/隔洋看世界",
+    "color": "1D4ED8",
+    "description": "今日头条 · 外媒看中国剪辑视频"
+  },
+  {
+    "name": "栏目/大蒜粒机研所",
+    "color": "6D28D9",
+    "description": "微信公众号 · AI / 具身智能 / 芯片深读"
+  },
+  {
+    "name": "状态/待做",
+    "color": "57534E",
+    "description": "还没开始"
+  },
+  {
+    "name": "状态/进行中",
+    "color": "1D4ED8",
+    "description": "正在做"
+  },
+  {
+    "name": "状态/卡住",
+    "color": "B42318",
+    "description": "做不下去。正文和评论都要写卡住原因"
+  },
+  {
+    "name": "状态/待验收",
+    "color": "B45309",
+    "description": "等 Shawn 验收"
+  },
+  {
+    "name": "状态/已发布",
+    "color": "157A3A",
+    "description": "已经发出。只有 Shawn 可以打上这个标签"
+  },
+  {
+    "name": "负责/Shawn",
+    "color": "9F2B1E",
+    "description": "Shawn。只有他可以把状态改成已发布"
+  },
+  {
+    "name": "负责/节气养生视频制作",
+    "color": "57534E",
+    "description": "四时日月 · 成片"
+  },
+  {
+    "name": "负责/视频运营",
+    "color": "57534E",
+    "description": "视频发布、封面和标题"
+  },
+  {
+    "name": "负责/视频质量审核",
+    "color": "57534E",
+    "description": "成片质量审核"
+  },
+  {
+    "name": "负责/隔洋看世界选题",
+    "color": "57534E",
+    "description": "隔洋看世界 · 选题"
+  },
+  {
+    "name": "负责/隔洋看世界制作组",
+    "color": "57534E",
+    "description": "隔洋看世界 · 剪辑成片"
+  },
+  {
+    "name": "负责/大蒜粒机研所策略顾问",
+    "color": "57534E",
+    "description": "大蒜粒机研所 · 方向"
+  },
+  {
+    "name": "负责/大蒜粒机研所选题",
+    "color": "57534E",
+    "description": "大蒜粒机研所 · 单篇选题"
+  },
+  {
+    "name": "负责/大蒜粒机研所写作",
+    "color": "57534E",
+    "description": "大蒜粒机研所 · 撰稿"
+  }
+]
