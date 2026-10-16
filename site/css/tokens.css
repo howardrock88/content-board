@@ -31,7 +31,7 @@
   --fast: 160ms;
   --slow: 220ms;
   --font: "PingFang SC", "HarmonyOS Sans", "Noto Sans SC", "Microsoft YaHei", "WenQuanYi Micro Hei", "Droid Sans Fallback", sans-serif;
-  --page: min(1120px, calc(100% - 48px));
+  --page: min(1344px, calc(100% - 48px));
 }
 
 [data-theme="dark"] {
