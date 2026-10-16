@@ -1,0 +1,371 @@
+/* 刊物 — a content-studio magazine. Paper, display song type, story tiles. */
+
+html[data-skin="editorial"] {
+  --ink: #1b140f;
+  --paper: #f4efe6;
+  --rule: #1b140f;
+}
+
+html[data-skin="editorial"] body {
+  color: var(--ink);
+  background:
+    radial-gradient(900px 280px at 0% 0%, rgba(120, 72, 32, 0.08), transparent 60%),
+    repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(60, 36, 16, 0.025) 4px),
+    var(--paper);
+  font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", "PMingLiU", serif;
+}
+
+html[data-skin="editorial"] .mast {
+  display: block;
+  text-align: center;
+  padding: 10px 28px 4px;
+  background: transparent;
+}
+
+html[data-skin="editorial"] .mast-id {
+  display: block;
+}
+
+html[data-skin="editorial"] .seal { display: none; }
+
+html[data-skin="editorial"] h1 {
+  font-family: "ZCOOL XiaoWei", "Noto Serif SC", serif;
+  font-size: clamp(36px, 4.2vw, 56px);
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  line-height: 1;
+}
+
+html[data-skin="editorial"] .lede {
+  margin-top: 8px;
+  letter-spacing: 0.42em;
+  font-size: 12px;
+  color: #6a5848;
+}
+
+html[data-skin="editorial"] .mast-date {
+  letter-spacing: 0.22em;
+  font-size: 12px;
+  color: #6a5848;
+}
+
+html[data-skin="editorial"] .mast-actions {
+  justify-content: center;
+  margin-top: 10px;
+}
+
+html[data-skin="editorial"] .mast-actions button,
+html[data-skin="editorial"] .pill {
+  border-radius: 0;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--ink);
+  min-height: 32px;
+  letter-spacing: 0.12em;
+}
+
+html[data-skin="editorial"] .demo-banner {
+  background: transparent;
+  color: #6a5848;
+  border-bottom: 1px solid var(--ink);
+  border-radius: 0;
+  text-align: center;
+  letter-spacing: 0.08em;
+}
+
+html[data-skin="editorial"] .attention {
+  margin: 8px 24px 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.9fr);
+  gap: 18px 28px;
+  align-items: stretch;
+}
+
+html[data-skin="editorial"] .attention-head {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-top: 3px solid var(--ink);
+  border-bottom: 1px solid var(--ink);
+  padding: 6px 0;
+  background: transparent;
+}
+
+html[data-skin="editorial"] .attention-head h2 {
+  font-family: "ZCOOL XiaoWei", serif;
+  font-size: 28px;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+}
+
+html[data-skin="editorial"] .attention-head span {
+  font-size: 12px;
+  letter-spacing: 0.2em;
+}
+
+html[data-skin="editorial"] .attention-feature {
+  background: #1b140f;
+  color: #f6f0e6;
+  border: 0;
+  border-radius: 0;
+  padding: 16px 18px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
+html[data-skin="editorial"] .attention-feature:hover { background: #2a1d15; }
+
+html[data-skin="editorial"] .attention-feature .kind {
+  letter-spacing: 0.28em;
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+html[data-skin="editorial"] .attention-feature strong {
+  font-family: "ZCOOL XiaoWei", serif;
+  font-size: clamp(26px, 2.4vw, 36px);
+  font-weight: 400;
+  line-height: 1.15;
+  letter-spacing: 0.03em;
+}
+
+html[data-skin="editorial"] .attention-feature .byline { opacity: 0.7; font-size: 13px; }
+
+html[data-skin="editorial"] .attention-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: auto;
+  max-height: 168px;
+  margin: 0;
+  padding: 0;
+}
+
+html[data-skin="editorial"] .attention-card {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid rgba(27, 20, 15, 0.25);
+  border-radius: 0;
+  padding: 7px 0;
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+
+html[data-skin="editorial"] .attention-card .kind {
+  letter-spacing: 0.12em;
+  font-size: 12px;
+  color: #8c3b2a;
+}
+
+html[data-skin="editorial"] .attention-card strong {
+  font-family: "ZCOOL XiaoWei", serif;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1.25;
+}
+
+html[data-skin="editorial"] .attention-empty {
+  grid-column: 1 / -1;
+  font-family: "ZCOOL XiaoWei", serif;
+  font-size: 28px;
+  margin: 12px 0;
+}
+
+html[data-skin="editorial"] .summary { padding-top: 8px; padding-bottom: 4px; }
+
+html[data-skin="editorial"] .lane-tile {
+  background: transparent;
+  border: 0;
+  border-top: 1px solid var(--ink);
+  border-radius: 0;
+  padding: 8px 8px 4px 0;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 8px 12px;
+  align-items: end;
+}
+
+html[data-skin="editorial"] .lane-tile:nth-child(2) { transform: translateY(6px); }
+
+html[data-skin="editorial"] .lane-motif {
+  font-family: "ZCOOL XiaoWei", serif;
+  font-size: 42px;
+  line-height: 0.8;
+  opacity: 0.85;
+}
+
+html[data-skin="editorial"] .lane-copy { display: flex; flex-direction: column; min-width: 0; }
+html[data-skin="editorial"] .lane-copy strong { font-size: 16px; letter-spacing: 0.12em; }
+html[data-skin="editorial"] .lane-copy em {
+  font-style: normal;
+  color: #6a5848;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+html[data-skin="editorial"] .lane-total {
+  font-family: "ZCOOL XiaoWei", serif;
+  font-size: 40px;
+  line-height: 0.8;
+}
+
+html[data-skin="editorial"] .lane-stats {
+  grid-column: 1 / -1;
+  color: #6a5848;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
+html[data-skin="editorial"] .tools { background: transparent; }
+html[data-skin="editorial"] .search input,
+html[data-skin="editorial"] select {
+  border-radius: 0;
+  background: transparent;
+  border-color: rgba(27, 20, 15, 0.35);
+}
+
+html[data-skin="editorial"] .chip { border-radius: 0; }
+html[data-skin="editorial"] .chip.is-on { background: var(--ink); color: var(--paper); }
+
+html[data-skin="editorial"] .status-switch { background: var(--paper); }
+html[data-skin="editorial"] .status-tab { border-radius: 0; letter-spacing: 0.12em; }
+html[data-skin="editorial"] .status-tab.is-current { background: var(--ink); color: var(--paper); }
+
+html[data-skin="editorial"] .board { gap: 18px; background: transparent; }
+html[data-skin="editorial"] .column {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0 4px;
+}
+
+html[data-skin="editorial"] .column-head {
+  display: block;
+  background: transparent;
+  border-bottom: 2px solid var(--ink);
+  padding: 0 0 6px;
+  position: sticky;
+  top: 0;
+}
+
+html[data-skin="editorial"] .column-mark {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.32em;
+  color: #8c3b2a;
+}
+
+html[data-skin="editorial"] .column-head h2 {
+  font-family: "ZCOOL XiaoWei", serif;
+  font-size: 26px;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+}
+
+html[data-skin="editorial"] .status-dot { display: none; }
+html[data-skin="editorial"] .count-badge { float: right; margin-top: -28px; letter-spacing: 0.14em; }
+
+html[data-skin="editorial"] .card {
+  position: relative;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 12px 4px 14px;
+  border-bottom: 1px solid rgba(27, 20, 15, 0.18);
+  overflow: hidden;
+  min-height: 132px;
+}
+
+html[data-skin="editorial"] .card:hover { background: rgba(255, 252, 247, 0.7); }
+
+html[data-skin="editorial"] .story-motif {
+  position: absolute;
+  right: -4px;
+  top: 18px;
+  font-family: "ZCOOL XiaoWei", serif;
+  font-size: 78px;
+  line-height: 0.8;
+  opacity: 0.12;
+}
+
+html[data-skin="editorial"] .story-no {
+  font-size: 12px;
+  letter-spacing: 0.18em;
+}
+
+html[data-skin="editorial"] .story-channel { letter-spacing: 0.16em; font-size: 12px; color: #6a5848; }
+html[data-skin="editorial"] .story-seal { display: none; }
+
+html[data-skin="editorial"] .card-title {
+  font-family: "ZCOOL XiaoWei", serif;
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1.25;
+  margin-top: 8px;
+  position: relative;
+}
+
+html[data-skin="editorial"] .card.is-stuck {
+  background: #1b140f;
+  color: #f6f0e6;
+  padding: 16px 14px;
+  border-bottom: 0;
+}
+
+html[data-skin="editorial"] .card.is-stuck .story-motif { opacity: 0.2; color: #f6f0e6; }
+html[data-skin="editorial"] .card.is-stuck .story-channel,
+html[data-skin="editorial"] .card.is-stuck .card-meta,
+html[data-skin="editorial"] .card.is-stuck time { color: rgba(246, 240, 230, 0.7); }
+html[data-skin="editorial"] .card.is-stuck .stuck-reason { color: #f0c2ae; margin-top: 8px; }
+
+html[data-skin="editorial"] .column[data-status="已发布"] .card-title { font-style: italic; }
+
+html[data-skin="editorial"] .empty-stage {
+  border-top: 3px solid var(--ink);
+  padding: 36px 8px;
+}
+
+html[data-skin="editorial"] .empty-kicker {
+  font-family: "ZCOOL XiaoWei", serif;
+  font-size: 64px;
+  line-height: 1;
+  margin: 0;
+  letter-spacing: 0.12em;
+}
+
+html[data-skin="editorial"] .empty-stage h2 {
+  font-family: "ZCOOL XiaoWei", serif;
+  font-weight: 400;
+  font-size: 32px;
+  letter-spacing: 0.08em;
+}
+
+html[data-skin="editorial"] dialog {
+  border-radius: 0;
+  font-family: "Noto Serif SC", serif;
+}
+
+html[data-skin="editorial"] dialog.drawer[open] { border-left: 3px solid var(--ink); }
+
+@media (min-width: 880px) {
+  html[data-skin="editorial"] .board {
+    grid-template-columns: 1.05fr 0.9fr 1.2fr 1fr 0.85fr;
+  }
+}
+
+@media (max-width: 879px) {
+  html[data-skin="editorial"] .attention { margin: 8px 14px 0; }
+  html[data-skin="editorial"] h1 { letter-spacing: 0.08em; font-size: 34px; }
+  html[data-skin="editorial"] .attention-list { flex-direction: row; max-height: none; }
+  html[data-skin="editorial"] .attention-card { flex: 0 0 240px; border-bottom: 0; border-right: 1px solid rgba(27, 20, 15, 0.25); padding-right: 10px; }
+  html[data-skin="editorial"] .lane-tile:nth-child(2) { transform: none; }
+}

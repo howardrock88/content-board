@@ -10,7 +10,24 @@
     <meta name="apple-mobile-web-app-title" content="内容总看板">
     <title>内容总看板</title>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+    <script>
+      (function () {
+        var theme = new URLSearchParams(location.search).get("theme");
+        if (theme === "editorial" || theme === "eastern" || theme === "glass") {
+          document.documentElement.setAttribute("data-skin", theme);
+        }
+      })();
+    </script>
     <link rel="stylesheet" href="./css/app.css">
+    <script>
+      (function () {
+        var theme = document.documentElement.getAttribute("data-skin");
+        if (!theme) return;
+        document.write('<link rel="stylesheet" href="./css/fonts.css">');
+        document.write('<link rel="stylesheet" href="./css/skin-base.css">');
+        document.write('<link rel="stylesheet" href="./css/skin-' + theme + '.css">');
+      })();
+    </script>
   </head>
   <body>
     <a class="skip" href="#board">跳到看板</a>
@@ -20,6 +37,7 @@
         <div>
           <h1>内容总看板</h1>
           <p class="lede">四时日月 · 隔洋看世界 · 大蒜粒机研所</p>
+          <p id="mast-date" class="mast-date" hidden></p>
         </div>
       </div>
       <div class="mast-actions">
@@ -67,6 +85,7 @@
         <a href="https://github.com/howardrock88/content-board" target="_blank" rel="noopener noreferrer">仓库</a>
         <a href="https://github.com/howardrock88/content-board/blob/main/BOT_GUIDE.md" target="_blank" rel="noopener noreferrer">机器人说明</a>
       </p>
+      <p id="skin-switch" class="fine links"></p>
     </footer>
 
     <dialog id="drawer" class="drawer" aria-label="内容详情">

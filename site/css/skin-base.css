@@ -1,0 +1,116 @@
+/* Shared structure for the three art directions. Visual language lives in skin-*.css. */
+
+html[data-skin] body {
+  display: flex;
+  flex-direction: column;
+}
+
+html[data-skin] .mast { order: 1; }
+html[data-skin] .demo-banner { order: 2; }
+html[data-skin] .attention { order: 3; }
+html[data-skin] .summary { order: 4; }
+html[data-skin] .tools { order: 5; }
+html[data-skin] .status-switch { order: 6; }
+html[data-skin] .board { order: 7; }
+html[data-skin] .colophon { order: 8; }
+
+html[data-skin] .mast-date {
+  display: block;
+  margin: 4px 0 0;
+}
+
+html[data-skin] .attention-feature,
+html[data-skin] .attention-card,
+html[data-skin] .lane-tile {
+  width: auto;
+  text-align: left;
+  min-height: 0;
+  cursor: pointer;
+}
+
+html[data-skin] .lane-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+html[data-skin] .lane-tile.is-on { outline: 2px solid currentColor; outline-offset: 2px; }
+
+html[data-skin] .story-motif,
+html[data-skin] .column-mark { pointer-events: none; }
+
+html[data-skin] .story-kicker,
+html[data-skin] .card-meta,
+html[data-skin] .lane-copy {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
+html[data-skin] .card-title { -webkit-line-clamp: 3; }
+
+html[data-skin] .empty-stage {
+  grid-column: 1 / -1;
+  min-height: 280px;
+}
+
+html[data-skin] .colophon p { margin: 0; }
+html[data-skin] .colophon { padding-top: 4px; padding-bottom: 8px; }
+html[data-skin] .demo-banner { margin-top: 0; margin-bottom: 0; padding-top: 6px; padding-bottom: 6px; }
+
+html[data-skin] .drag-handle {
+  min-height: 28px;
+  padding: 0 8px;
+}
+
+@media (min-width: 880px) and (min-height: 760px) {
+  html[data-skin] body {
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  html[data-skin] .board {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    overflow: hidden;
+  }
+
+  html[data-skin] .column {
+    max-height: none;
+    min-height: 0;
+    overflow: auto;
+    display: flex;
+  }
+}
+
+@media (max-width: 879px) {
+  html[data-skin] body { height: auto; overflow: auto; }
+  html[data-skin] .lane-row {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+  }
+  html[data-skin] .lane-tile {
+    flex: 0 0 78%;
+    scroll-snap-align: start;
+  }
+  html[data-skin] .mast { padding-top: 8px; padding-bottom: 4px; }
+  html[data-skin] .mast-actions { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; }
+  html[data-skin] .lede { display: none; }
+  html[data-skin] .lane-stats { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  html[data-skin] .demo-banner { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  html[data-skin] .filters { flex-wrap: nowrap; overflow-x: auto; }
+  html[data-skin] .filters > * { flex: none; }
+  html[data-skin] .chips { flex-wrap: nowrap; }
+  html[data-skin] .attention-list {
+    display: flex;
+    flex-direction: row;
+    max-height: none;
+    overflow-x: auto;
+  }
+  html[data-skin] .attention-card,
+  html[data-skin] .attention-feature { flex: 0 0 auto; }
+}

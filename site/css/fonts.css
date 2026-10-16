@@ -1,0 +1,34 @@
+/* Self-hosted subsets (SIL OFL). See fonts/OFL.txt.
+   Coverage is the interface plus the sample desk; other characters fall back to Songti / system sans. */
+
+@font-face {
+  font-family: "Noto Serif SC";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("../fonts/noto-serif-sc.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "ZCOOL XiaoWei";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../fonts/zcool-xiaowei.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Ma Shan Zheng";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../fonts/ma-shan-zheng.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Syne";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("../fonts/syne.woff2") format("woff2");
+}

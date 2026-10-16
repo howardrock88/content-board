@@ -1,0 +1,14 @@
+These webfonts are subset for this site and remain under the SIL Open Font License 1.1.
+Full license: https://openfontlicense.org
+
+Noto Serif SC — Copyright 2017-2021 Adobe, with Reserved Font Name 'Source'.
+https://fonts.google.com/noto/specimen/Noto+Serif+SC
+
+Ma Shan Zheng — Copyright 2018 The MaShanZheng Project Authors.
+https://fonts.google.com/specimen/Ma+Shan+Zheng
+
+ZCOOL XiaoWei — Copyright 2018 The ZCOOL XiaoWei Project Authors.
+https://fonts.google.com/specimen/ZCOOL+XiaoWei
+
+Syne — Copyright 2017 The Syne Project Authors.
+https://fonts.google.com/specimen/Syne

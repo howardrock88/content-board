@@ -89,6 +89,20 @@ let toastTimer = 0;
 let drag = null;
 let suppressClickUntil = 0;
 
+const SKINS = ["editorial", "eastern", "glass"];
+
+function skin() {
+  const value = document.documentElement.dataset.skin || "";
+  return SKINS.includes(value) ? value : "";
+}
+
+function motifChar(label) {
+  if (String(label).endsWith("四时日月")) return "日";
+  if (String(label).endsWith("隔洋看世界")) return "洋";
+  if (String(label).endsWith("大蒜粒机研所")) return "研";
+  return "稿";
+}
+
 function h(tag, attrs = {}, children = []) {
   const node = document.createElement(tag);
   for (const [key, value] of Object.entries(attrs)) {
@@ -178,6 +192,41 @@ function renderChrome() {
   els.error.hidden = !state.error;
   els.error.textContent = state.error || "";
   els.sync.textContent = syncLine();
+  paintSkinChrome();
+}
+
+function paintSkinChrome() {
+  const node = document.querySelector("#mast-date");
+  if (node) {
+    if (!skin()) node.hidden = true;
+    else {
+      node.hidden = false;
+      const date = new Intl.DateTimeFormat("zh-CN", {
+        timeZone: "Asia/Shanghai",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        weekday: "long",
+      }).format(new Date());
+      const name = { editorial: "刊物", eastern: "节气", glass: "琉璃" }[skin()];
+      node.textContent = `${date} · 北京时间 · ${name}`;
+    }
+  }
+  const bar = document.querySelector("#skin-switch");
+  if (!bar) return;
+  const hrefFor = (theme) => {
+    const next = new URLSearchParams(location.search);
+    if (theme) next.set("theme", theme);
+    else next.delete("theme");
+    const query = next.toString();
+    return query ? `?${query}` : "./";
+  };
+  const link = (theme, label) => {
+    const anchor = h("a", { href: hrefFor(theme) }, label);
+    if ((theme || "") === skin()) anchor.setAttribute("aria-current", "page");
+    return anchor;
+  };
+  bar.replaceChildren("设计方向 ", link("", "现行"), " · ", link("editorial", "刊物"), " · ", link("eastern", "节气"), " · ", link("glass", "琉璃"));
 }
 
 function syncLine() {
@@ -194,6 +243,10 @@ function syncLine() {
 
 function renderSummary(visible) {
   els.summary.replaceChildren();
+  if (skin()) {
+    renderArtSummary();
+    return;
+  }
   for (const status of STATUSES) {
     const count = visible.filter((issue) => columnFor(issue) === status).length;
     const button = h("button", { type: "button", class: `stat${state.mobileStatus === status ? " is-current" : ""}` }, [
@@ -205,7 +258,44 @@ function renderSummary(visible) {
   }
 }
 
+function scopedIssues() {
+  const grouped = commentsGrouped();
+  return state.issues.filter((issue) => matchesFilters(issue, { ...state.filters, lane: "all" }, reasonFor(issue, grouped)));
+}
+
+function renderArtSummary() {
+  const pool = scopedIssues();
+  const row = h("div", { class: "lane-row" });
+  for (const lane of LANES) {
+    const items = pool.filter((issue) => issue.lanes.includes(lane.label));
+    const on = state.filters.lane === lane.label;
+    const stats = STATUSES.map((status) => `${status} ${items.filter((issue) => columnFor(issue) === status).length}`).join(" · ");
+    const button = h("button", {
+      type: "button",
+      class: `lane-tile${on ? " is-on" : ""}`,
+      "data-lane": lane.label,
+      "aria-pressed": on ? "true" : "false",
+    }, [
+      h("span", { class: "lane-motif", "aria-hidden": "true" }, motifChar(lane.label)),
+      h("span", { class: "lane-copy" }, [h("strong", {}, lane.name), h("em", {}, lane.platform)]),
+      h("b", { class: "lane-total" }, String(items.length)),
+      h("span", { class: "lane-stats" }, stats),
+    ]);
+    button.addEventListener("click", () => {
+      state.filters.lane = on ? "all" : lane.label;
+      paintLanes();
+      renderLists();
+    });
+    row.append(button);
+  }
+  els.summary.append(row);
+}
+
 function renderAttention(visible) {
+  if (skin()) {
+    renderArtAttention(visible);
+    return;
+  }
   const items = visible.filter((issue) => attentionKind(issue)).sort(byAttention);
   els.attention.className = items.length ? "attention is-hot" : "attention is-clear";
   els.attention.replaceChildren();
@@ -221,6 +311,50 @@ function renderAttention(visible) {
     const label = kind === "Shawn" ? "负责 Shawn" : kind;
     const button = h("button", { type: "button", class: `attention-card kind-${kind}` }, [
       h("span", { class: "kind" }, label),
+      h("strong", {}, issue.title),
+    ]);
+    button.addEventListener("click", () => openDrawer(issue.number));
+    list.append(button);
+  }
+  els.attention.append(list);
+}
+
+function renderArtAttention(visible) {
+  const items = visible.filter((issue) => attentionKind(issue)).sort(byAttention);
+  els.attention.className = items.length ? "attention is-hot" : "attention is-clear";
+  els.attention.replaceChildren();
+  els.attention.append(
+    h("div", { class: "attention-head" }, [
+      h("h2", {}, "需要你处理"),
+      h("span", {}, items.length ? `${items.length} 条` : "现在没有"),
+    ]),
+  );
+  if (!items.length) {
+    els.attention.append(h("p", { class: "attention-empty" }, "没有需要你处理的。待验收、卡住，或负责 Shawn 的稿件会出现在这里。"));
+    return;
+  }
+  const feature = items[0];
+  const kind = attentionKind(feature);
+  const lead = h("button", { type: "button", class: `attention-feature kind-${kind}` }, [
+    h("span", { class: "kind" }, kind === "Shawn" ? "负责 Shawn" : kind),
+    h("strong", {}, feature.title),
+    h("span", { class: "byline" }, [
+      laneMeta(feature.lanes[0])?.name || "未分栏目",
+      " · ",
+      feature.owners[0] || "未指定",
+      " · ",
+      relativeTime(feature.updatedAt),
+    ]),
+  ]);
+  lead.addEventListener("click", () => openDrawer(feature.number));
+  els.attention.append(lead);
+  const rest = items.slice(1);
+  if (!rest.length) return;
+  const list = h("div", { class: "attention-list" });
+  for (const issue of rest) {
+    const itemKind = attentionKind(issue);
+    const button = h("button", { type: "button", class: `attention-card kind-${itemKind}` }, [
+      h("span", { class: "kind" }, itemKind === "Shawn" ? "负责 Shawn" : itemKind),
       h("strong", {}, issue.title),
     ]);
     button.addEventListener("click", () => openDrawer(issue.number));
@@ -275,12 +409,12 @@ function renderBoard(visible) {
       "data-status": status,
       "aria-label": status,
     });
-    column.append(
-      h("header", { class: "column-head" }, [
-        h("h2", {}, [h("span", { class: "status-dot", "data-status": status }), status]),
-        h("span", { class: "count-badge" }, String(items.length)),
-      ]),
-    );
+    const headKids = [
+      h("h2", {}, [h("span", { class: "status-dot", "data-status": status }), status]),
+      h("span", { class: "count-badge" }, String(items.length)),
+    ];
+    if (skin()) headKids.unshift(h("span", { class: "column-mark", "aria-hidden": "true" }, status));
+    column.append(h("header", { class: "column-head" }, headKids));
     const list = h("div", { class: "column-list" });
     if (!items.length) list.append(h("p", { class: "column-empty" }, filtersActive() ? "没有匹配的条目" : "空"));
     for (const issue of items) list.append(renderCard(issue));
@@ -294,6 +428,22 @@ function renderBoard(visible) {
 }
 
 function emptyState() {
+  if (skin() && !state.error) {
+    const word = { editorial: "空白", eastern: "空", glass: "00" }[skin()];
+    return h("div", { class: "empty empty-stage" }, [
+      h("p", { class: "empty-kicker" }, word),
+      h("h2", {}, "看板上还没有进行中的内容"),
+      h("p", {}, "在本仓库新建 Issue，打上栏目、状态、负责标签，刷新后就会出现。关闭的 Issue 会归档。"),
+      h("p", {}, [
+        h("a", {
+          href: "https://github.com/howardrock88/content-board/blob/main/BOT_GUIDE.md",
+          target: "_blank",
+          rel: "noopener noreferrer",
+        }, "机器人怎么写议题"),
+      ]),
+      h("p", {}, [h("a", { href: "?demo=1" }, "先看示例布局")]),
+    ]);
+  }
   const wrap = h("div", { class: "empty" });
   if (state.error) {
     wrap.append(h("p", {}, state.error));
@@ -319,6 +469,7 @@ function emptyState() {
 }
 
 function renderCard(issue) {
+  if (skin()) return renderArtCard(issue);
   const column = columnFor(issue);
   const reason = column === "卡住" ? reasonFor(issue) : "";
   const card = h("article", {
@@ -355,6 +506,42 @@ function renderCard(issue) {
   });
   meta.append(people);
   card.append(meta);
+  return card;
+}
+
+function renderArtCard(issue) {
+  const column = columnFor(issue);
+  const reason = column === "卡住" ? reasonFor(issue) : "";
+  const lane = issue.lanes[0] || "";
+  const meta = laneMeta(lane);
+  const card = h("article", {
+    class: `card story${column === "卡住" ? " is-stuck" : ""}`,
+    "data-id": issue.number,
+    "data-lane": lane || null,
+    "data-status": column,
+    tabindex: "0",
+  });
+  const kicker = h("div", { class: "story-kicker" }, [
+    h("span", { class: "story-no" }, String(issue.number).padStart(3, "0")),
+    h("span", { class: "story-channel" }, meta ? meta.name : "未分栏目"),
+    h("span", { class: "story-seal", "data-status": column }, column),
+  ]);
+  if (state.writable) {
+    kicker.append(h("button", { type: "button", class: "drag-handle", "data-drag": "1", "aria-label": "拖拽以更改状态", title: "拖拽以更改状态" }, "拖"));
+  }
+  if (issue.missingStatus) kicker.append(h("span", { class: "flag" }, "未标状态"));
+  if (issue.duplicateStatus) kicker.append(h("span", { class: "flag" }, "状态重复"));
+  card.append(
+    h("span", { class: "story-motif", "aria-hidden": "true" }, motifChar(lane)),
+    kicker,
+    h("h3", { class: "card-title" }, issue.title),
+  );
+  if (column === "卡住") card.append(h("p", { class: "stuck-reason" }, reason || "未写原因"));
+  const owners = issue.owners.length ? issue.owners.join("、") : "未指定";
+  card.append(h("div", { class: "card-meta" }, [
+    h("span", { class: "story-owner" }, owners),
+    h("time", { datetime: issue.updatedAt, title: absoluteTime(issue.updatedAt) }, relativeTime(issue.updatedAt)),
+  ]));
   return card;
 }
 
