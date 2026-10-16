@@ -39,6 +39,26 @@ import {
 
 const DEMO = new URLSearchParams(location.search).has("demo");
 
+const THEME_KEY = "content-board:theme";
+
+const AVATARS = {
+  Shawn: "#b42318",
+  节气养生视频制作: "#c2410c",
+  视频运营: "#b45309",
+  视频质量审核: "#a16207",
+  隔洋看世界选题: "#1d4ed8",
+  隔洋看世界制作组: "#0369a1",
+  大蒜粒机研所策略顾问: "#6d28d9",
+  大蒜粒机研所选题: "#7c3aed",
+  大蒜粒机研所写作: "#4f46e5",
+};
+
+const LANE_ICONS = {
+  "栏目/四时日月": `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 3v2.2M12 18.8V21M3 12h2.2M18.8 12H21M5.6 5.6l1.6 1.6M16.8 16.8l1.6 1.6M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6"/></svg>`,
+  "栏目/隔洋看世界": `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M4 12h16M12 4c2.4 2.6 3.6 5.2 3.6 8s-1.2 5.4-3.6 8c-2.4-2.6-3.6-5.2-3.6-8s1.2-5.4 3.6-8z"/></svg>`,
+  "栏目/大蒜粒机研所": `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="10" height="10" rx="2"/><path d="M9 3v2M15 3v2M9 19v2M15 19v2M3 9h2M3 15h2M19 9h2M19 15h2"/></svg>`,
+};
+
 const state = {
   demo: DEMO,
   issues: [],
@@ -86,8 +106,10 @@ const els = {
 
 let refreshTimer = 0;
 let toastTimer = 0;
+let clockTimer = 0;
 let drag = null;
 let suppressClickUntil = 0;
+let refreshFlight = false;
 
 function h(tag, attrs = {}, children = []) {
   const node = document.createElement(tag);
@@ -178,6 +200,9 @@ function renderChrome() {
   els.error.hidden = !state.error;
   els.error.textContent = state.error || "";
   els.sync.textContent = syncLine();
+  els.sync.title = els.sync.textContent;
+  paintToday();
+  els.board.setAttribute("aria-busy", state.loading ? "true" : "false");
 }
 
 function syncLine() {
@@ -192,36 +217,120 @@ function syncLine() {
   return `上次同步 ${when}${rate}${mode}${slow}${trunc}${comments}`;
 }
 
-function renderSummary(visible) {
+function scopedIssues() {
+  const grouped = commentsGrouped();
+  return state.issues.filter((issue) => matchesFilters(issue, { ...state.filters, lane: "all" }, reasonFor(issue, grouped)));
+}
+
+function laneIcon(label) {
+  const icon = h("span", { class: "channel-icon", "aria-hidden": "true" });
+  icon.innerHTML = LANE_ICONS[label] || "";
+  return icon;
+}
+
+function avatarNode(name) {
+  const known = Object.prototype.hasOwnProperty.call(AVATARS, name);
+  return h(
+    "span",
+    {
+      class: known ? "avatar" : "avatar more",
+      title: name,
+      style: known ? `background:${AVATARS[name]}` : null,
+    },
+    name === "未指定" ? "?" : [...name][0] || "?",
+  );
+}
+
+function renderSummary() {
   els.summary.replaceChildren();
-  for (const status of STATUSES) {
-    const count = visible.filter((issue) => columnFor(issue) === status).length;
-    const button = h("button", { type: "button", class: `stat${state.mobileStatus === status ? " is-current" : ""}` }, [
-      h("b", {}, String(count)),
-      h("span", {}, status),
-    ]);
-    button.addEventListener("click", () => jumpTo(status));
+  if (state.loading && !state.issues.length) {
+    for (let index = 0; index < 3; index += 1) els.summary.append(h("div", { class: "channel skeleton", "aria-hidden": "true" }));
+    return;
+  }
+  const pool = scopedIssues();
+  for (const lane of LANES) {
+    const items = pool.filter((issue) => issue.lanes.includes(lane.label));
+    const on = state.filters.lane === lane.label;
+    const button = h("button", {
+      type: "button",
+      class: `channel${on ? " is-on" : ""}`,
+      "data-lane": lane.label,
+      "aria-pressed": on ? "true" : "false",
+    });
+    const counts = h("div", { class: "channel-counts" });
+    for (const status of STATUSES) {
+      const count = items.filter((issue) => columnFor(issue) === status).length;
+      counts.append(
+        h("span", { class: `mini${status === "卡住" && count ? " is-stuck" : ""}`, title: status }, [
+          h("i", { class: "status-dot", "data-status": status }),
+          h("b", {}, String(count)),
+          h("em", {}, status),
+        ]),
+      );
+    }
+    button.append(
+      h("div", { class: "channel-top" }, [
+        laneIcon(lane.label),
+        h("span", { class: "channel-copy" }, [h("strong", {}, lane.name), h("span", {}, lane.platform)]),
+        h("b", { class: "channel-total" }, String(items.length)),
+      ]),
+      counts,
+    );
+    button.addEventListener("click", () => {
+      state.filters.lane = on ? "all" : lane.label;
+      paintLanes();
+      renderLists();
+    });
     els.summary.append(button);
   }
 }
 
 function renderAttention(visible) {
-  const items = visible.filter((issue) => attentionKind(issue)).sort(byAttention);
-  els.attention.className = items.length ? "attention is-hot" : "attention is-clear";
+  const loading = state.loading && !state.issues.length;
+  const items = loading ? [] : visible.filter((issue) => attentionKind(issue)).sort(byAttention);
+  els.attention.className = loading ? "attention" : items.length ? "attention is-hot" : "attention is-clear";
   els.attention.replaceChildren();
-  const head = h("div", { class: "attention-head" }, [
-    h("h2", {}, "需要你处理"),
-    h("span", {}, items.length ? String(items.length) : "现在没有"),
-  ]);
-  els.attention.append(head);
-  if (!items.length) return;
+  els.attention.append(
+    h("div", { class: "attention-head" }, [
+      h("div", { class: "attention-title" }, [
+        h("span", { class: "attention-mark", "aria-hidden": "true" }),
+        h("div", {}, [
+          h("h2", {}, "需要你处理"),
+          h("p", {}, "待验收、卡住，或负责 Shawn"),
+        ]),
+      ]),
+      h("span", { class: "count-pill" }, loading ? "…" : String(items.length)),
+    ]),
+  );
+  if (loading) {
+    const list = h("div", { class: "attention-list" });
+    for (let index = 0; index < 3; index += 1) list.append(h("div", { class: "attention-card skeleton", "aria-hidden": "true" }));
+    els.attention.append(list);
+    return;
+  }
+  if (!items.length) {
+    els.attention.append(
+      h("p", { class: "attention-empty" }, [
+        h("strong", {}, "没有需要你处理的。"),
+        " 待验收、卡住，或负责 Shawn 的内容会出现在这里。",
+      ]),
+    );
+    return;
+  }
   const list = h("div", { class: "attention-list" });
   for (const issue of items) {
     const kind = attentionKind(issue);
     const label = kind === "Shawn" ? "负责 Shawn" : kind;
+    const lane = issue.lanes[0];
+    const meta = laneMeta(lane);
     const button = h("button", { type: "button", class: `attention-card kind-${kind}` }, [
       h("span", { class: "kind" }, label),
       h("strong", {}, issue.title),
+      h("span", { class: "attention-meta" }, [
+        avatarNode(issue.owners[0] || "未指定"),
+        meta ? h("span", { class: "tag", "data-lane": lane }, meta.name) : null,
+        h("time", { datetime: issue.updatedAt, title: absoluteTime(issue.updatedAt) }, relativeTime(issue.updatedAt)),
+      ]),
     ]);
     button.addEventListener("click", () => openDrawer(issue.number));
     list.append(button);
@@ -261,7 +370,7 @@ function renderBoard(visible) {
   const tops = new Map([...els.board.querySelectorAll(".column")].map((column) => [column.dataset.status, column.scrollTop]));
   els.board.replaceChildren();
   if (state.loading && !state.issues.length) {
-    els.board.append(h("p", { class: "empty" }, "正在读取议题…"));
+    for (const status of STATUSES) els.board.append(skeletonColumn(status));
     return;
   }
   if (!state.issues.length) {
@@ -282,7 +391,7 @@ function renderBoard(visible) {
       ]),
     );
     const list = h("div", { class: "column-list" });
-    if (!items.length) list.append(h("p", { class: "column-empty" }, filtersActive() ? "没有匹配的条目" : "空"));
+    if (!items.length) list.append(h("p", { class: "column-empty" }, filtersActive() ? "没有匹配的条目" : "这一列还是空的"));
     for (const issue of items) list.append(renderCard(issue));
     column.append(list);
     els.board.append(column);
@@ -293,43 +402,72 @@ function renderBoard(visible) {
   }
 }
 
+function skeletonColumn(status) {
+  const column = h("section", {
+    class: `column${state.mobileStatus === status ? " is-current" : ""}`,
+    "data-status": status,
+    "aria-hidden": "true",
+  });
+  column.append(
+    h("header", { class: "column-head" }, [
+      h("h2", {}, [h("span", { class: "status-dot", "data-status": status }), status]),
+      h("span", { class: "count-badge" }, ""),
+    ]),
+  );
+  const list = h("div", { class: "column-list" });
+  list.append(h("div", { class: "card skeleton-card" }), h("div", { class: "card skeleton-card short" }));
+  column.append(list);
+  return column;
+}
+
+function emptyGlyph() {
+  const glyph = h("div", { class: "empty-glyph", "aria-hidden": "true" });
+  glyph.innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="4" height="16" rx="1.2"/><rect x="10" y="4" width="4" height="10" rx="1.2"/><rect x="16" y="4" width="4" height="6" rx="1.2"/></svg>`;
+  return glyph;
+}
+
 function emptyState() {
-  const wrap = h("div", { class: "empty" });
   if (state.error) {
-    wrap.append(h("p", {}, state.error));
-    return wrap;
+    const retry = h("button", { type: "button", class: "btn" }, "再试一次");
+    retry.addEventListener("click", () => refresh({ manual: true }));
+    return h("div", { class: "empty-stage is-error" }, [
+      emptyGlyph(),
+      h("h2", {}, "暂时没有读到看板"),
+      h("p", {}, state.error),
+      h("div", { class: "empty-actions" }, [retry]),
+    ]);
   }
-  wrap.append(
-    h("p", {}, "看板上还没有进行中的内容。"),
-    h("p", {}, "在本仓库新建 Issue，打上栏目、状态、负责标签，刷新后就会出现。关闭的 Issue 会归档。"),
-    h("p", {}, [
+  return h("div", { class: "empty-stage" }, [
+    emptyGlyph(),
+    h("h2", {}, "看板上还没有进行中的内容"),
+    h("p", {}, "在本仓库新建一条 Issue，打上栏目、状态和负责标签，刷新后就会出现在对应的列里。关闭的 Issue 会归档，不会留在这里。"),
+    h("div", { class: "empty-actions" }, [
       h(
         "a",
         {
+          class: "btn btn-primary",
           href: "https://github.com/howardrock88/content-board/blob/main/BOT_GUIDE.md",
           target: "_blank",
           rel: "noopener noreferrer",
         },
         "机器人怎么写议题",
       ),
+      h("a", { class: "btn", href: "?demo=1" }, "先看示例布局"),
     ]),
-    h("p", {}, [h("a", { href: "?demo=1" }, "先看示例布局")]),
-  );
-  return wrap;
+  ]);
 }
 
 function renderCard(issue) {
   const column = columnFor(issue);
   const reason = column === "卡住" ? reasonFor(issue) : "";
+  const lane = issue.lanes[0] || "";
   const card = h("article", {
     class: `card${column === "卡住" ? " is-stuck" : ""}`,
     "data-id": issue.number,
+    "data-lane": lane || null,
     tabindex: "0",
   });
   const tags = h("div", { class: "tags" });
-  if (state.writable) {
-    tags.append(h("button", { type: "button", class: "drag-handle", "data-drag": "1", "aria-label": "拖拽以更改状态", title: "拖拽以更改状态" }, "拖"));
-  }
   if (!issue.lanes.length) tags.append(h("span", { class: "tag tag-missing" }, "未分栏目"));
   for (const label of issue.lanes) {
     const meta = laneMeta(label);
@@ -337,31 +475,33 @@ function renderCard(issue) {
   }
   if (issue.missingStatus) tags.append(h("span", { class: "flag" }, "未标状态"));
   if (issue.duplicateStatus) tags.append(h("span", { class: "flag" }, "状态重复"));
-  card.append(
-    h("div", { class: "card-top" }, [
-      tags,
-      h("time", { datetime: issue.updatedAt, title: absoluteTime(issue.updatedAt) }, relativeTime(issue.updatedAt)),
-    ]),
-    h("h3", { class: "card-title" }, issue.title),
-  );
-  if (column === "卡住") card.append(h("p", { class: "stuck-reason", title: reason }, reason ? `原因：${reason}` : "原因：未填写"));
+  const top = h("div", { class: "card-top" });
+  if (state.writable) {
+    top.append(h("button", { type: "button", class: "drag-handle", "data-drag": "1", "aria-label": "拖拽以更改状态", title: "拖拽以更改状态" }, "⋮⋮"));
+  }
+  top.append(tags, h("time", { datetime: issue.updatedAt, title: absoluteTime(issue.updatedAt) }, relativeTime(issue.updatedAt)));
+  card.append(top, h("h3", { class: "card-title" }, issue.title));
+  if (column === "卡住") {
+    card.append(h("p", { class: "stuck-reason", title: reason || "未填写原因" }, reason ? `卡住：${reason}` : "卡住：未填写原因"));
+  }
   const owners = issue.owners.length ? issue.owners : ["未指定"];
-  const meta = h("div", { class: "card-meta" });
-  meta.append(h("span", {}, `#${issue.number}`));
-  const people = h("span", {});
-  owners.forEach((name, index) => {
-    if (index) people.append("、");
-    people.append(h("span", { class: name === "Shawn" ? "owner is-shawn" : "owner" }, name));
-  });
-  meta.append(people);
-  card.append(meta);
+  const people = h("div", { class: "avatars" });
+  owners.slice(0, 3).forEach((name) => people.append(avatarNode(name)));
+  if (owners.length > 3) people.append(h("span", { class: "avatar more", title: owners.slice(3).join("、") }, `+${owners.length - 3}`));
+  card.append(
+    h("div", { class: "card-meta" }, [
+      people,
+      h("span", { class: "sr" }, owners.join("、")),
+      h("span", { class: "issue-no" }, `#${issue.number}`),
+    ]),
+  );
   return card;
 }
 
 function renderLists() {
   if (state.dragActive) return;
   const visible = visibleIssues();
-  renderSummary(visible);
+  renderSummary();
   renderAttention(visible);
   renderStatusSwitch(visible);
   renderBoard(visible);
@@ -752,11 +892,12 @@ async function refresh({ manual }) {
     if (manual) toast("示例数据不请求 GitHub");
     return;
   }
-  if (state.loading) return;
+  if (refreshFlight) return;
   if (!manual && state.fetchedAt && Date.now() - state.fetchedAt < FRESH_MS - 2000) {
     schedule();
     return;
   }
+  refreshFlight = true;
   state.loading = true;
   renderLists();
   const previousComments = state.comments;
@@ -776,6 +917,7 @@ async function refresh({ manual }) {
     renderLists();
     toast(state.error);
   } finally {
+    refreshFlight = false;
     state.loading = false;
     schedule();
   }
@@ -948,10 +1090,91 @@ function bootKeys() {
   els.board.addEventListener("pointerdown", onPointerDown, { passive: false });
 }
 
+function paintToday() {
+  const node = document.querySelector("#today");
+  if (!node) return;
+  const text = new Intl.DateTimeFormat("zh-CN", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    weekday: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(new Date());
+  node.textContent = `${text} · 北京时间`;
+}
+
+function applyTheme(theme) {
+  const next = theme === "dark" ? "dark" : "light";
+  document.documentElement.dataset.theme = next;
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute("content", next === "dark" ? "#0c0d10" : "#f4f5f7");
+  try {
+    localStorage.setItem(THEME_KEY, next);
+  } catch {
+    /* private mode */
+  }
+  const button = document.querySelector("#theme-toggle");
+  if (!button) return;
+  const toDark = next !== "dark";
+  button.textContent = toDark ? "深色" : "浅色";
+  button.setAttribute("aria-label", toDark ? "切换到深色模式" : "切换到浅色模式");
+  button.setAttribute("aria-pressed", next === "dark" ? "true" : "false");
+}
+
+function bootTheme() {
+  applyTheme(document.documentElement.dataset.theme || "light");
+  document.querySelector("#theme-toggle")?.addEventListener("click", () => {
+    applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+  });
+}
+
+function bootSwipe() {
+  let startX = 0;
+  let startY = 0;
+  let active = false;
+  els.board.addEventListener(
+    "touchstart",
+    (event) => {
+      if (window.innerWidth >= 1040) return;
+      if (event.target.closest("[data-drag], a, button, input, textarea, select")) return;
+      const touch = event.changedTouches[0];
+      startX = touch.clientX;
+      startY = touch.clientY;
+      active = true;
+    },
+    { passive: true },
+  );
+  els.board.addEventListener(
+    "touchend",
+    (event) => {
+      if (!active) return;
+      active = false;
+      if (window.innerWidth >= 1040) return;
+      const touch = event.changedTouches[0];
+      const dx = touch.clientX - startX;
+      const dy = touch.clientY - startY;
+      if (Math.abs(dx) < 56 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+      const index = STATUSES.indexOf(state.mobileStatus);
+      const next = index + (dx < 0 ? 1 : -1);
+      if (next < 0 || next >= STATUSES.length) return;
+      jumpTo(STATUSES[next]);
+    },
+    { passive: true },
+  );
+}
+
 function boot() {
   bootFilters();
   bootDialogs();
   bootKeys();
+  bootTheme();
+  bootSwipe();
+  paintToday();
+  clearInterval(clockTimer);
+  clockTimer = setInterval(paintToday, 30_000);
   els.refresh.addEventListener("click", () => refresh({ manual: true }));
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState !== "visible" || state.demo) return;
@@ -965,8 +1188,9 @@ function boot() {
   }
   const cache = loadCache();
   if (cache) applyPayload(cache);
-  renderLists();
   const fresh = cache && Date.now() - cache.fetchedAt < FRESH_MS;
+  if (!fresh && !cache) state.loading = true;
+  renderLists();
   if (fresh) schedule();
   else refresh({ manual: false });
 }
