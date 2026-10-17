@@ -1,4 +1,4 @@
-// 内容今日
+// 内容：一块扁平的卡片桌面。
 // 数据是本仓库的 GitHub Issues。未登录读取，写入用的 token 只留在 localStorage。
 // 关闭的议题视为归档。示例模式（?demo=1）不请求 GitHub，也不写入缓存。
 
@@ -34,6 +34,7 @@ import {
   relativeTime,
   renderMarkdown,
   resolveStuckReason,
+  shanghaiDayKey,
   STATUSES,
   upsertSection,
 } from "./parse.js";
@@ -45,7 +46,9 @@ const THEME_KEY = "content-board:theme";
 
 const state = {
   demo: DEMO,
-  view: PARAMS.get("view") === "board" ? "board" : "today",
+  view: PARAMS.get("view") === "board" || PARAMS.get("view") === "line" ? "line" : "today",
+  mobileLane: LANES[0].label,
+  mobileLaneChosen: false,
   issues: [],
   comments: [],
   fetchedAt: null,
@@ -66,19 +69,17 @@ const state = {
 
 const els = {
   board: document.querySelector("#board"),
-  focus: document.querySelector("#focus"),
-  bento: document.querySelector("#bento"),
-  timeline: document.querySelector("#timeline"),
-  greet: document.querySelector("#day-greet"),
-  date: document.querySelector("#day-date"),
-  dayLine: document.querySelector("#day-line"),
-  daySub: document.querySelector("#day-sub"),
-  dayActions: document.querySelector("#day-actions"),
+  today: document.querySelector("#today"),
+  stats: document.querySelector("#stats"),
+  wait: document.querySelector("#wait"),
+  stuck: document.querySelector("#stuck-list"),
+  feed: document.querySelector("#feed"),
+  channels: document.querySelector("#channels"),
+  lineSwitch: document.querySelector("#line-switch"),
+  date: document.querySelector("#mast-date"),
   filterNote: document.querySelector("#filter-note"),
-  statusSwitch: document.querySelector("#status-switch"),
   sync: document.querySelector("#sync-line"),
   error: document.querySelector("#error-line"),
-  result: document.querySelector("#result-count"),
   mode: document.querySelector("#mode-pill"),
   progress: document.querySelector("#progress"),
   refresh: document.querySelector("#refresh"),
@@ -104,7 +105,6 @@ let drag = null;
 let suppressClickUntil = 0;
 let paletteItems = [];
 let paletteIndex = 0;
-let entered = false;
 
 function h(tag, attrs = {}, children = []) {
   const node = document.createElement(tag);
@@ -208,30 +208,28 @@ function cnNumber(value) {
   return `${tens === 1 ? "十" : digits[tens] + "十"}${ones ? digits[ones] : ""}`;
 }
 
-function greeting(date = new Date()) {
-  const hour = Number(shanghaiParts(date).hour);
-  if (hour < 11) return hour < 5 ? "晚上好" : "早上好";
-  if (hour < 13) return "中午好";
-  if (hour < 18) return "下午好";
-  return "晚上好";
-}
-
 function dateLine(date = new Date()) {
   const parts = shanghaiParts(date);
   const week = { Sun: "星期日", Mon: "星期一", Tue: "星期二", Wed: "星期三", Thu: "星期四", Fri: "星期五", Sat: "星期六" };
   return `${cnNumber(parts.month)}月${cnNumber(parts.day)}日 · ${week[parts.weekday] || ""} · 北京`;
 }
 
-function daySentence(issues) {
-  const review = issues.filter((issue) => columnFor(issue) === "待验收").length;
-  const stuck = issues.filter((issue) => columnFor(issue) === "卡住").length;
-  if (review && stuck) return `今天有 ${review} 件事等你拍板，${stuck} 件卡住了。`;
-  if (review) return `今天有 ${review} 件事等你拍板。`;
-  if (stuck) return `今天有 ${stuck} 件卡住了。`;
-  const mine = issues.filter((issue) => attentionKind(issue) === "Shawn" && columnFor(issue) !== "已发布").length;
-  if (mine) return `今天有 ${mine} 件在你名下。`;
-  if (!issues.length && filtersActive()) return "这个筛选下，今天没有内容。";
-  return "三条线都在往前走，今天没有要你拍板的事。";
+function weekStartKey(date = new Date()) {
+  const [year, month, day] = shanghaiDayKey(date).split("-").map(Number);
+  const utc = new Date(Date.UTC(year, month - 1, day));
+  const weekday = utc.getUTCDay();
+  const delta = weekday === 0 ? 6 : weekday - 1;
+  utc.setUTCDate(utc.getUTCDate() - delta);
+  const y = utc.getUTCFullYear();
+  const m = String(utc.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(utc.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function publishedThisWeek(issue, start = weekStartKey()) {
+  if (columnFor(issue) !== "已发布") return false;
+  const key = shanghaiDayKey(new Date(issue.updatedAt));
+  return key >= start;
 }
 
 function excerpt(text, limit = 72) {
@@ -244,10 +242,10 @@ function excerpt(text, limit = 72) {
 }
 
 function setView(view) {
-  state.view = view === "board" ? "board" : "today";
+  state.view = view === "line" || view === "board" ? "line" : "today";
   document.documentElement.dataset.view = state.view;
   const url = new URL(location.href);
-  if (state.view === "board") url.searchParams.set("view", "board");
+  if (state.view === "line") url.searchParams.set("view", "line");
   else url.searchParams.delete("view");
   history.replaceState(null, "", url);
   renderLists();
@@ -261,7 +259,7 @@ function applyTheme(theme) {
   document.documentElement.dataset.theme = theme;
   try { localStorage.setItem(THEME_KEY, theme); } catch { /* ignore */ }
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.content = theme === "dark" ? "#12110F" : "#E7E4DE";
+  if (meta) meta.content = theme === "dark" ? "#12110F" : "#DDD9D1";
   if (els.theme) els.theme.setAttribute("aria-label", theme === "dark" ? "切换到浅色" : "切换到深色");
 }
 
@@ -278,9 +276,8 @@ function renderChrome(visible) {
   els.error.hidden = !showError;
   els.error.textContent = showError ? state.error : "";
   els.sync.textContent = syncLine();
-  els.result.textContent = filtersActive() ? `显示 ${visible.length} / ${state.issues.length}` : `共 ${state.issues.length} 条`;
   els.viewToday.setAttribute("aria-pressed", state.view === "today" ? "true" : "false");
-  els.viewBoard.setAttribute("aria-pressed", state.view === "board" ? "true" : "false");
+  els.viewBoard.setAttribute("aria-pressed", state.view === "line" ? "true" : "false");
   renderFilterNote();
 }
 
@@ -315,135 +312,235 @@ function renderFilterNote() {
   els.filterNote.hidden = false;
 }
 
-function renderToday(visible) {
-  const loadingEmpty = state.loading && !state.issues.length;
-  const failedEmpty = !state.loading && Boolean(state.error) && !state.issues.length;
-  const knownEmpty = !state.loading && !state.error && !state.issues.length;
-  els.date.textContent = dateLine();
-  els.greet.textContent = greeting();
-  els.dayLine.classList.toggle("is-poster", knownEmpty);
-  if (loadingEmpty) els.dayLine.textContent = "正在读今天的议题…";
-  else if (failedEmpty) els.dayLine.textContent = state.error;
-  else if (knownEmpty) els.dayLine.textContent = "今天是空的。";
-  else els.dayLine.textContent = daySentence(visible);
-  els.daySub.hidden = !(knownEmpty || failedEmpty);
-  els.daySub.textContent = knownEmpty ? "三条线都还没开始。" : failedEmpty ? "可以稍后再试。" : "";
-  els.dayActions.hidden = !(knownEmpty || failedEmpty);
-  if (loadingEmpty || failedEmpty) {
-    els.focus.hidden = true;
-    els.bento.hidden = true;
-    els.timeline.hidden = true;
-    return;
-  }
-  els.bento.hidden = false;
-  els.timeline.hidden = false;
-  renderFocus(visible);
-  renderBento(visible);
-  renderTimeline(visible);
+function activeLane() {
+  if (state.mobileLaneChosen) return state.mobileLane;
+  if (state.filters.lane !== "all") return state.filters.lane;
+  return LANES[0].label;
 }
 
-function renderFocus(visible) {
-  const items = visible.filter(needsShawn).sort(byAttention);
-  els.focus.replaceChildren();
-  if (!items.length) {
-    els.focus.hidden = true;
-    return;
-  }
-  els.focus.hidden = false;
-  const shown = items.slice(0, 3);
-  const head = h("div", { class: "section-head" }, [
-    h("h2", {}, "等你处理"),
-    h("span", {}, items.length > shown.length ? `${shown.length} / ${items.length}` : String(items.length)),
+function statTile(value, label, extra = "") {
+  return h("article", { class: `stat${extra ? ` ${extra}` : ""}` }, [
+    h("b", {}, value),
+    h("span", {}, label),
   ]);
-  const grid = h("div", { class: "focus-grid", "data-count": String(shown.length) });
-  shown.forEach((issue, index) => grid.append(renderHero(issue, index === 0)));
-  els.focus.append(head, grid);
 }
 
-function renderHero(issue, lead) {
-  const column = columnFor(issue);
-  const kind = attentionKind(issue);
+function openFromRow(event, number) {
+  if (event.target.closest(".row-actions") || event.target.closest("a")) return;
+  openDrawer(number);
+}
+
+function bindRow(row, number) {
+  row.tabIndex = 0;
+  row.addEventListener("click", (event) => openFromRow(event, number));
+  row.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    if (event.target.closest(".row-actions") || event.target.closest("a")) return;
+    event.preventDefault();
+    openDrawer(number);
+  });
+}
+
+function brief(issue) {
+  const text = String(issue.body || "").replace(/\r\n/g, "\n");
+  const match = text.match(/^#{1,3}[ \t]*说明[ \t]*$/m);
+  if (!match) return "";
+  const rest = text.slice(match.index + match[0].length);
+  const next = rest.search(/\n#{1,3}[ \t]+\S/);
+  const raw = (next === -1 ? rest : rest.slice(0, next)).trim();
+  const line = raw.split("\n").map((row) => row.replace(/^[-*]\s+/, "").trim()).find(Boolean) || "";
+  if (!line || /^[（(]/.test(line)) return "";
+  return line.length > 64 ? `${line.slice(0, 64)}…` : line;
+}
+
+function metaLine(issue, extra = "") {
   const lane = issue.lanes[0];
   const meta = lane ? laneMeta(lane) : null;
-  const button = h("button", {
-    type: "button",
-    class: `hero${lead ? " is-lead" : ""}${column === "卡住" ? " is-stuck" : ""}`,
-    "data-id": issue.number,
-  });
-  const laneLine = h("span", { class: "lane" }, [
-    lane ? h("span", { class: "dot", "data-lane": lane }) : null,
-    meta ? meta.name : "未分栏目",
-  ]);
-  const word = kind === "待验收" ? "等你拍板" : kind === "卡住" ? "卡住" : "在你名下";
-  button.append(
-    h("span", { class: "hero-kicker" }, [laneLine, h("span", { class: `status-word kind-${kind}` }, word)]),
-    h("span", { class: "hero-title" }, issue.title),
-  );
-  if (column === "卡住") button.append(h("span", { class: "reason" }, reasonFor(issue) || "还没有写原因"));
   const owners = issue.owners.length ? issue.owners.join("、") : "未指定";
-  button.append(h("span", { class: "hero-meta" }, `${owners} · ${relativeTime(issue.updatedAt)}`));
-  button.addEventListener("click", () => openDrawer(issue.number));
-  return button;
-}
-
-function renderBento(visible) {
-  els.bento.replaceChildren();
-  const head = h("div", { class: "section-head" }, [h("h2", {}, "三条线")]);
-  const grid = h("div", { class: "bento-grid" });
-  LANES.forEach((lane, index) => grid.append(renderTile(lane, visible, index === 0)));
-  els.bento.append(head, grid);
-}
-
-function renderTile(lane, visible, lead) {
-  const excluded = state.filters.lane !== "all" && state.filters.lane !== lane.label;
-  const laneIssues = visible.filter((issue) => issue.lanes.includes(lane.label));
-  const tile = h("article", { class: `tile${lead ? " tile-lead" : ""}${excluded ? " is-muted" : ""}` });
-  tile.append(
-    h("h3", { class: "tile-name" }, [h("span", { class: "dot", "data-lane": lane.label }), lane.name]),
-    h("p", { class: "tile-platform" }, lane.platform),
-  );
-  if (excluded) {
-    tile.append(h("p", { class: "tile-empty" }, "这条线不在当前筛选里。"));
-    return tile;
-  }
-  tile.append(renderTrack(laneIssues));
-  const stuck = laneIssues.filter((issue) => columnFor(issue) === "卡住").length;
-  if (stuck) tile.append(h("p", { class: "stuck-note" }, `${stuck} 件卡住`));
-  const recent = [...laneIssues].sort(byUpdatedDesc).slice(0, lead ? 3 : 2);
-  if (!recent.length) {
-    tile.append(h("p", { class: "tile-empty" }, "还没有内容"));
-    return tile;
-  }
-  const list = h("div", { class: "recents" });
-  for (const issue of recent) list.append(renderRecent(issue));
-  tile.append(list);
-  return tile;
-}
-
-function renderTrack(issues) {
-  const track = h("div", {
-    class: "track",
-    role: "img",
-    "aria-label": PIPELINE.map((status) => `${status} ${issues.filter((issue) => columnFor(issue) === status).length}`).join("，"),
-  });
-  for (const status of PIPELINE) {
-    const count = issues.filter((issue) => columnFor(issue) === status).length;
-    track.append(h("div", { class: `stage${count ? "" : " is-zero"}` }, [
-      h("b", {}, String(count)),
-      h("i", { "aria-hidden": "true" }, [h("span")]),
-      h("small", {}, status),
-    ]));
-  }
-  return track;
-}
-
-function renderRecent(issue) {
-  const button = h("button", { type: "button", class: "recent", "data-id": issue.number }, [
-    h("span", { class: "recent-title" }, issue.title),
-    h("span", { class: "recent-meta" }, `${columnFor(issue)} · ${relativeTime(issue.updatedAt)}`),
+  const bits = [meta ? meta.name : "未分栏目", extra, owners, relativeTime(issue.updatedAt)].filter(Boolean);
+  return h("span", { class: "row-meta" }, [
+    lane ? h("span", { class: "dot", "data-lane": lane }) : null,
+    bits.join(" · "),
   ]);
-  button.addEventListener("click", () => openDrawer(issue.number));
-  return button;
+}
+
+function actionButtons(issue) {
+  const actions = h("div", { class: "row-actions" });
+  const open = h("button", { type: "button" }, "打开");
+  open.addEventListener("click", (event) => {
+    event.stopPropagation();
+    openDrawer(issue.number);
+  });
+  actions.append(open);
+  if (state.writable) {
+    const pass = h("button", { type: "button", class: "pass" }, "通过");
+    pass.addEventListener("click", (event) => {
+      event.stopPropagation();
+      commitStatus(issue.number, "已发布");
+    });
+    actions.append(pass);
+  }
+  return actions;
+}
+
+function renderHome(visible) {
+  const failed = !state.loading && Boolean(state.error) && !state.issues.length;
+  const loading = state.loading && !state.issues.length;
+  const knownEmpty = !state.loading && !state.error && !state.issues.length;
+  els.date.textContent = dateLine();
+  const mark = failed || loading ? "—" : null;
+  const review = visible.filter((issue) => columnFor(issue) === "待验收");
+  const stuck = visible.filter((issue) => columnFor(issue) === "卡住");
+  const moving = visible.filter((issue) => columnFor(issue) === "进行中");
+  const shipped = visible.filter((issue) => publishedThisWeek(issue));
+  els.stats.replaceChildren(
+    statTile(mark || String(review.length), "等你拍板", "is-accent"),
+    statTile(mark || String(stuck.length), "卡住", "is-invert"),
+    statTile(mark || String(moving.length), "进行中"),
+    statTile(mark || String(shipped.length), "本周已发布"),
+  );
+  renderWait(review, { failed, loading, knownEmpty });
+  renderStuck(stuck, { failed, loading });
+  renderFeed(visible, { failed, loading });
+  renderChannels(visible, { failed, loading });
+}
+
+function renderWait(items, { failed, loading, knownEmpty }) {
+  const sorted = [...items].sort(byUpdatedDesc);
+  els.wait.replaceChildren(tileHead("等你拍板", failed || loading ? "" : String(sorted.length)));
+  const body = h("div", { class: "tile-body" });
+  if (loading) {
+    body.append(h("p", { class: "quiet" }, "正在读取议题…"));
+  } else if (failed) {
+    body.append(h("p", { class: "quiet" }, state.error || "网络不通，暂时无法联系 GitHub。"));
+  } else if (!sorted.length) {
+    body.append(h("p", { class: "quiet" }, knownEmpty || !filtersActive() ? "没有要拍板的。" : "这个筛选下没有要拍板的。"));
+    if (knownEmpty) {
+      body.append(h("p", { class: "quiet" }, [
+        h("a", { href: "?demo=1" }, "先看示例"),
+        " · ",
+        h("a", { href: "https://github.com/howardrock88/content-board/blob/main/BOT_GUIDE.md", target: "_blank", rel: "noopener noreferrer" }, "机器人怎么写议题"),
+      ]));
+    }
+  } else {
+    for (const issue of sorted) {
+      const row = h("div", { class: "row", "data-id": issue.number }, [
+        h("div", {}, [
+          h("span", { class: "row-title" }, issue.title),
+          brief(issue) ? h("span", { class: "row-meta" }, brief(issue)) : null,
+          metaLine(issue),
+        ]),
+        actionButtons(issue),
+      ]);
+      bindRow(row, issue.number);
+      body.append(row);
+    }
+  }
+  els.wait.append(body);
+}
+
+function renderStuck(items, { failed, loading }) {
+  const sorted = [...items].sort(byUpdatedDesc);
+  els.stuck.replaceChildren(tileHead("卡住", failed || loading ? "" : String(sorted.length)));
+  const body = h("div", { class: "tile-body" });
+  if (loading) body.append(h("p", { class: "quiet" }, "正在读取议题…"));
+  else if (failed) body.append(h("p", { class: "quiet" }, "没能读到卡住的条目。"));
+  else if (!sorted.length) body.append(h("p", { class: "quiet" }, filtersActive() ? "这个筛选下没有卡住的。" : "没有卡住的。"));
+  else {
+    for (const issue of sorted) {
+      const reason = reasonFor(issue) || "还没有写原因";
+      const row = h("div", { class: "row", "data-id": issue.number }, [
+        h("div", {}, [
+          h("span", { class: "row-title" }, issue.title),
+          h("span", { class: "reason" }, reason),
+          metaLine(issue),
+        ]),
+      ]);
+      bindRow(row, issue.number);
+      body.append(row);
+    }
+  }
+  els.stuck.append(body);
+}
+
+function renderFeed(visible, { failed, loading }) {
+  const events = failed || loading ? [] : activityEvents(visible);
+  els.feed.replaceChildren(tileHead("最近动态", events.length ? String(events.length) : ""));
+  const body = h("div", { class: "tile-body" });
+  if (loading) body.append(h("p", { class: "quiet" }, "正在读取议题…"));
+  else if (failed) body.append(h("p", { class: "quiet" }, "动态还没读到。"));
+  else if (!events.length) body.append(h("p", { class: "quiet" }, "还没有新的动态。"));
+  else {
+    for (const event of events) {
+      const when = event.who ? `${event.who} · ${relativeTime(event.at)}` : relativeTime(event.at);
+      const row = h("div", { class: `row feed${event.stuck ? " is-stuck" : ""}`, "data-id": event.number }, [
+        h("span", { class: "feed-time" }, when),
+        h("span", { class: "feed-title" }, event.title),
+        event.excerpt ? h("span", { class: "feed-excerpt" }, event.excerpt) : null,
+      ]);
+      bindRow(row, event.number);
+      body.append(row);
+    }
+  }
+  els.feed.append(body);
+}
+
+function tileHead(title, count) {
+  return h("div", { class: "tile-head" }, [
+    h("h2", {}, title),
+    count ? h("span", {}, count) : null,
+  ]);
+}
+
+function renderChannels(visible, { failed, loading }) {
+  els.channels.replaceChildren();
+  for (const lane of LANES) {
+    const excluded = state.filters.lane !== "all" && state.filters.lane !== lane.label;
+    const tile = h("article", { class: `channel${excluded ? " is-muted" : ""}` });
+    tile.append(
+      h("h3", { class: "channel-name" }, [h("span", { class: "dot", "data-lane": lane.label }), lane.name]),
+      h("p", { class: "channel-plat" }, lane.platform),
+    );
+    if (excluded) {
+      tile.append(h("p", { class: "quiet" }, "这条线不在当前筛选里。"));
+      els.channels.append(tile);
+      continue;
+    }
+    const laneIssues = visible.filter((issue) => issue.lanes.includes(lane.label));
+    const counts = h("div", { class: "counts" });
+    for (const status of PIPELINE) {
+      const count = failed || loading ? "—" : String(laneIssues.filter((issue) => columnFor(issue) === status).length);
+      counts.append(h("div", { class: status === "待验收" && count !== "0" && count !== "—" ? "hot" : "" }, [
+        h("b", {}, count),
+        h("small", {}, status),
+      ]));
+    }
+    tile.append(counts);
+    const stuck = laneIssues.filter((issue) => columnFor(issue) === "卡住");
+    if (!failed && !loading && stuck.length) {
+      tile.append(h("p", { class: "stuck-note" }, `${stuck.length} 件卡住`));
+    }
+    const recent = [...laneIssues].sort(byUpdatedDesc).filter((issue) => columnFor(issue) !== "已发布").slice(0, 3);
+    const body = h("div", { class: "tile-body" });
+    if (failed) body.append(h("p", { class: "quiet" }, "还没读到。"));
+    else if (loading) body.append(h("p", { class: "quiet" }, "正在读取…"));
+    else if (!laneIssues.length) body.append(h("p", { class: "quiet" }, "还没有内容。"));
+    else if (!recent.length) body.append(h("p", { class: "quiet" }, "最近都已发布。"));
+    else {
+      for (const issue of recent) {
+        const row = h("div", { class: "row", "data-id": issue.number }, [
+          h("div", {}, [
+            h("span", { class: "row-title" }, issue.title),
+            h("span", { class: "row-meta" }, `${columnFor(issue)} · ${relativeTime(issue.updatedAt)}`),
+          ]),
+        ]);
+        bindRow(row, issue.number);
+        body.append(row);
+      }
+    }
+    tile.append(body);
+    els.channels.append(tile);
+  }
 }
 
 function activityEvents(visible) {
@@ -463,7 +560,7 @@ function activityEvents(visible) {
     });
   }
   events.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
-  if (events.length) return events.slice(0, 8);
+  if (events.length) return events.slice(0, 6);
   return [...visible].sort(byUpdatedDesc).slice(0, 6).map((issue) => ({
     at: issue.updatedAt,
     title: issue.title,
@@ -474,145 +571,104 @@ function activityEvents(visible) {
   }));
 }
 
-function renderTimeline(visible) {
-  els.timeline.replaceChildren();
-  const head = h("div", { class: "section-head" }, [h("h2", {}, "最近动态")]);
-  const events = activityEvents(visible);
-  if (!events.length) {
-    els.timeline.append(head, h("p", { class: "timeline-empty" }, "还没有新的动态。"));
-    return;
-  }
-  const list = h("div", { class: "events" });
-  for (const event of events) {
-    const when = event.who ? `${event.who} · ${relativeTime(event.at)}` : relativeTime(event.at);
-    const button = h("button", { type: "button", class: `event${event.stuck ? " is-stuck" : ""}`, "data-id": event.number }, [
-      h("span", { class: "event-mark" }),
-      h("span", {}, [
-        h("span", { class: "event-time" }, when),
-        h("span", { class: "event-title" }, event.title),
-        event.excerpt ? h("span", { class: "event-excerpt" }, event.excerpt) : null,
-      ]),
-    ]);
-    button.addEventListener("click", () => openDrawer(event.number));
-    list.append(button);
-  }
-  els.timeline.append(head, list);
-}
-
-function renderStatusSwitch(visible) {
-  els.statusSwitch.replaceChildren();
-  for (const status of STATUSES) {
-    const count = visible.filter((issue) => columnFor(issue) === status).length;
+function renderLine(visible) {
+  const laneId = activeLane();
+  const tops = new Map([...els.board.querySelectorAll(".lane")].map((lane) => [lane.dataset.lane, lane.scrollTop]));
+  els.lineSwitch.replaceChildren();
+  for (const lane of LANES) {
     const button = h("button", {
       type: "button",
-      class: `status-tab${state.mobileStatus === status ? " is-current" : ""}`,
+      class: lane.label === laneId ? "is-current" : "",
       role: "tab",
-      "data-status": status,
-      "aria-selected": state.mobileStatus === status ? "true" : "false",
-    }, [status, h("small", {}, String(count))]);
-    button.addEventListener("click", () => jumpTo(status));
-    els.statusSwitch.append(button);
+      "aria-selected": lane.label === laneId ? "true" : "false",
+    }, lane.name);
+    button.addEventListener("click", () => {
+      state.mobileLane = lane.label;
+      state.mobileLaneChosen = true;
+      renderLists();
+    });
+    els.lineSwitch.append(button);
   }
-}
-
-function jumpTo(status) {
-  state.mobileStatus = status;
-  state.mobileChosen = true;
-  renderLists();
-}
-
-function renderBoard(visible) {
-  const left = els.board.scrollLeft;
-  const tops = new Map([...els.board.querySelectorAll(".column")].map((column) => [column.dataset.status, column.scrollTop]));
   els.board.replaceChildren();
   if (state.loading && !state.issues.length) {
-    els.board.append(h("p", { class: "column-empty" }, "正在读取议题…"));
+    els.board.append(h("p", { class: "stage-empty" }, "正在读取议题…"));
     return;
   }
-  if (!state.issues.length) {
-    els.board.append(emptyBoard());
+  if (!state.loading && state.error && !state.issues.length) {
+    els.board.append(h("p", { class: "stage-empty" }, state.error || "网络不通，暂时无法联系 GitHub。"));
     return;
   }
-  for (const status of STATUSES) {
-    const items = visible.filter((issue) => columnFor(issue) === status).sort(byUpdatedDesc);
-    const column = h("section", {
-      class: `column${state.mobileStatus === status ? " is-current" : ""}`,
-      "data-status": status,
-      "aria-label": status,
+  for (const lane of LANES) {
+    const laneIssues = visible.filter((issue) => issue.lanes.includes(lane.label));
+    const section = h("section", {
+      class: `lane${lane.label === laneId ? " is-current" : ""}`,
+      "data-lane": lane.label,
+      "aria-label": lane.name,
     });
-    column.append(h("header", { class: "column-head" }, [
-      h("h2", {}, status),
-      h("span", { class: "count" }, String(items.length)),
+    section.append(h("div", { class: "lane-head" }, [
+      h("span", { class: "dot", "data-lane": lane.label }),
+      h("h2", {}, lane.name),
+      h("small", {}, lane.platform),
     ]));
-    const list = h("div", { class: "column-list" });
-    if (!items.length) list.append(h("p", { class: "column-empty" }, filtersActive() ? "没有匹配的条目" : "空"));
-    for (const issue of items) list.append(renderCard(issue));
-    column.append(list);
-    els.board.append(column);
+    for (const status of PIPELINE) {
+      section.append(renderStage(status, laneIssues.filter((issue) => columnFor(issue) === status)));
+    }
+    section.append(renderStage("卡住", laneIssues.filter((issue) => columnFor(issue) === "卡住"), true));
+    els.board.append(section);
   }
-  els.board.scrollLeft = left;
-  for (const column of els.board.querySelectorAll(".column")) {
-    column.scrollTop = tops.get(column.dataset.status) || 0;
+  for (const lane of els.board.querySelectorAll(".lane")) {
+    lane.scrollTop = tops.get(lane.dataset.lane) || 0;
   }
 }
 
-function emptyBoard() {
-  const wrap = h("div", { class: "board-empty" });
-  if (state.error) {
-    wrap.append(h("p", {}, state.error));
-    return wrap;
-  }
-  wrap.append(
-    h("p", {}, "今天是空的。"),
-    h("p", {}, [h("a", { href: "?demo=1" }, "先看示例")]),
-  );
-  return wrap;
-}
-
-function renderCard(issue) {
-  const column = columnFor(issue);
-  const reason = column === "卡住" ? reasonFor(issue) : "";
-  const card = h("article", {
-    class: `card${column === "卡住" ? " is-stuck" : ""}`,
-    "data-id": issue.number,
-    tabindex: "0",
+function renderStage(status, items, stuck = false) {
+  const stage = h("section", {
+    class: `stage${stuck ? " is-stuck" : ""}`,
+    "data-status": status,
+    "aria-label": status,
   });
-  const top = h("div", { class: "card-top" });
+  stage.append(h("div", { class: "stage-head" }, [
+    h("h3", {}, status),
+    h("span", {}, String(items.length)),
+  ]));
+  if (!items.length) stage.append(h("p", { class: "stage-empty" }, "空"));
+  for (const issue of [...items].sort(byUpdatedDesc)) stage.append(renderMini(issue));
+  return stage;
+}
+
+function renderMini(issue) {
+  const column = columnFor(issue);
+  const card = h("article", { class: "mini", "data-id": issue.number, tabindex: "0" });
   if (state.writable) {
-    top.append(h("button", { type: "button", class: "grip", "data-drag": "1", "aria-label": "拖拽以更改状态", title: "拖拽以更改状态" }, [icon("grip")]));
+    card.append(h("button", {
+      type: "button",
+      class: "grip",
+      "data-drag": "1",
+      "aria-label": "拖拽以更改状态",
+      title: "拖拽以更改状态",
+    }, [icon("grip")]));
   }
-  const lane = issue.lanes[0];
-  const meta = lane ? laneMeta(lane) : null;
-  if (lane) {
-    top.append(h("span", { class: "lane-line" }, [h("span", { class: "dot", "data-lane": lane }), meta ? meta.name : lane]));
-  } else top.append(h("span", { class: "flag" }, "未分栏目"));
-  if (issue.missingStatus) top.append(h("span", { class: "flag" }, "未标状态"));
-  if (issue.duplicateStatus) top.append(h("span", { class: "flag" }, "状态重复"));
-  top.append(h("time", { datetime: issue.updatedAt, title: absoluteTime(issue.updatedAt) }, relativeTime(issue.updatedAt)));
-  card.append(top, h("h3", { class: "card-title" }, issue.title));
-  if (column === "卡住") card.append(h("p", { class: "stuck-reason", title: reason }, reason || "原因未填写"));
+  const body = h("div", {});
+  body.append(h("h3", {}, issue.title));
   const owners = issue.owners.length ? issue.owners.join("、") : "未指定";
-  card.append(h("div", { class: "card-meta" }, [`#${issue.number}`, owners]));
+  const flags = [issue.missingStatus ? "未标状态" : "", issue.duplicateStatus ? "状态重复" : ""].filter(Boolean).join(" · ");
+  body.append(h("p", {}, [owners, relativeTime(issue.updatedAt), flags].filter(Boolean).join(" · ")));
+  if (column === "卡住") {
+    body.append(h("p", { class: "stuck-reason" }, reasonFor(issue) || "还没有写原因"));
+  }
+  card.append(body);
   return card;
 }
 
 function renderLists() {
   if (state.dragActive) return;
   const visible = visibleIssues();
-  renderToday(visible);
-  renderStatusSwitch(visible);
-  renderBoard(visible);
+  renderHome(visible);
+  renderLine(visible);
   renderChrome(visible);
   if (state.openId && els.drawer.open) fillDrawer(state.openId);
-  if (!entered) {
-    entered = true;
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (!reduce) {
-      document.documentElement.classList.add("is-entering");
-      setTimeout(() => document.documentElement.classList.remove("is-entering"), 1400);
-    }
-  }
 }
+
 
 function openDrawer(number) {
   if (state.openId !== number) state.commentDraft = "";
@@ -966,7 +1022,7 @@ function paletteCommands() {
   }
   if (filtersActive()) items.push({ group: "当前", label: "清除筛选", run: clearFilters });
   push({ group: "页面", label: "今日", hint: state.view === "today" ? "当前" : "", run: () => setView("today") });
-  push({ group: "页面", label: "看板", hint: state.view === "board" ? "当前" : "", run: () => setView("board") });
+  push({ group: "页面", label: "产线", hint: state.view === "line" ? "当前" : "", keywords: "看板", run: () => setView("line") });
   push({ group: "栏目", label: "全部栏目", hint: state.filters.lane === "all" ? "当前" : "", run: () => { state.filters.lane = "all"; renderLists(); } });
   for (const lane of LANES) {
     push({
@@ -1135,11 +1191,13 @@ function onPointerMove(event) {
   floater.style.transform = `translate(${event.clientX + 12}px, ${event.clientY + 12}px)`;
   const status = statusAt(event.clientX, event.clientY);
   drag.hover = status;
-  document.querySelectorAll(".column[data-status]").forEach((node) => node.classList.toggle("is-drop", Boolean(status) && node.dataset.status === status));
-  const board = els.board;
-  const rect = board.getBoundingClientRect();
-  if (event.clientX < rect.left + 48) board.scrollLeft -= 18;
-  else if (event.clientX > rect.right - 48) board.scrollLeft += 18;
+  document.querySelectorAll(".stage[data-status]").forEach((node) => node.classList.toggle("is-drop", Boolean(status) && node.dataset.status === status));
+  const lane = document.elementFromPoint(event.clientX, event.clientY)?.closest(".lane");
+  if (lane) {
+    const rect = lane.getBoundingClientRect();
+    if (event.clientY < rect.top + 40) lane.scrollTop -= 14;
+    else if (event.clientY > rect.bottom - 40) lane.scrollTop += 14;
+  }
 }
 
 function onPointerUp(event) {
@@ -1165,11 +1223,8 @@ function onPointerUp(event) {
 
 function statusAt(x, y) {
   const node = document.elementFromPoint(x, y);
-  const column = node?.closest(".column");
-  if (column?.dataset.status) return column.dataset.status;
-  const target = node?.closest("[data-status]");
-  if (!target || target.closest("[data-id]")) return "";
-  return target.dataset.status || "";
+  const stage = node?.closest(".stage");
+  return stage?.dataset.status || "";
 }
 
 function ensureFloater() {
@@ -1280,7 +1335,7 @@ function boot() {
   bootDialogs();
   bootKeys();
   els.viewToday.addEventListener("click", () => setView("today"));
-  els.viewBoard.addEventListener("click", () => setView("board"));
+  els.viewBoard.addEventListener("click", () => setView("line"));
   document.querySelector("#palette-open").addEventListener("click", openPalette);
   els.theme.addEventListener("click", () => applyTheme(currentTheme() === "dark" ? "light" : "dark"));
   els.refresh.addEventListener("click", () => {

@@ -1,59 +1,48 @@
-/* Quiet palette. Neutrals carry the page. One accent. Channel hues stay on dots. */
+/* Flat tiles. Neutrals, one accent, no shadow, no gradient. */
 
 :root,
 [data-theme="light"] {
   color-scheme: light;
-  --canvas: #e7e4de;
-  --surface: #ffffff;
-  --surface-2: #f3f0ea;
+  --canvas: #ddd9d1;
+  --surface: #f6f4f0;
+  --inset: #ece8e1;
   --ink: #1c1a17;
-  --ink-soft: #6e695f;
-  --line: #ddd8d0;
+  --ink-soft: #5e594f;
+  --line: #d4cfc6;
   --primary: #c2412d;
   --primary-ink: #ffffff;
   --primary-hover: #a33524;
-  --hero: #24211e;
-  --hero-ink: #f7f4ef;
-  --hero-soft: #a9a298;
+  --invert: #241f1c;
+  --invert-ink: #f6f1e8;
+  --invert-soft: #b7b0a6;
   --lane-1: #8f7340;
   --lane-2: #4e6e86;
   --lane-3: #8a5a68;
   --stuck: #b4332a;
-  --stuck-bg: #f8ebe8;
   --stuck-ink: #8e2e28;
-  --shadow: 0 1px 1px rgba(28, 26, 23, 0.04), 0 16px 40px rgba(28, 26, 23, 0.06);
-  --shadow-lift: 0 16px 36px rgba(28, 26, 23, 0.12);
-  --radius-s: 8px;
-  --radius-m: 14px;
-  --radius-l: 20px;
-  --radius-xl: 28px;
-  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --fast: 160ms;
-  --slow: 220ms;
-  --font: "PingFang SC", "HarmonyOS Sans", "Noto Sans SC", "Microsoft YaHei", "WenQuanYi Micro Hei", "Droid Sans Fallback", sans-serif;
-  --page: min(1344px, calc(100% - 48px));
+  --radius: 18px;
+  --radius-in: 10px;
+  --font: Inter, "PingFang SC", "HarmonyOS Sans", "Noto Sans SC", "Microsoft YaHei", "WenQuanYi Micro Hei", "Droid Sans Fallback", sans-serif;
+  --gap: 12px;
 }
 
 [data-theme="dark"] {
   color-scheme: dark;
   --canvas: #12110f;
   --surface: #1c1b18;
-  --surface-2: #262420;
+  --inset: #262420;
   --ink: #f4f1ea;
   --ink-soft: #a9a49a;
-  --line: #3a3833;
+  --line: #34322e;
   --primary: #e36a52;
   --primary-ink: #1c100c;
   --primary-hover: #f08a74;
-  --hero: #2c2925;
-  --hero-ink: #f7f4ef;
-  --hero-soft: #b7b1a6;
+  --invert: #f3eee6;
+  --invert-ink: #1c1916;
+  --invert-soft: #5e594f;
   --lane-1: #c4a36a;
   --lane-2: #8aabbe;
   --lane-3: #c49aaa;
   --stuck: #e2685c;
-  --stuck-bg: #3a2422;
   --stuck-ink: #f0b4ae;
-  --shadow: 0 1px 1px rgba(0, 0, 0, 0.35), 0 16px 40px rgba(0, 0, 0, 0.32);
-  --shadow-lift: 0 18px 44px rgba(0, 0, 0, 0.45);
 }
