@@ -37,12 +37,17 @@
   {
     "name": "状态/已发布",
     "color": "157A3A",
-    "description": "已经发出。只有 Shawn 可以打上这个标签"
+    "description": "视频已公开发出。视频运营确认链接后打上，然后关闭"
+  },
+  {
+    "name": "状态/已完成",
+    "color": "157A3A",
+    "description": "文章已由 Shawn 通过。写作 bot 打上后关闭。不用于视频"
   },
   {
     "name": "负责/Shawn",
     "color": "9F2B1E",
-    "description": "Shawn。只有他可以把状态改成已发布"
+    "description": "Shawn。文章由他通过后，写作 bot 标成已完成"
   },
   {
     "name": "负责/节气养生视频制作",

@@ -9,11 +9,14 @@ import {
   BODY_TEMPLATE,
   bodyFromSummary,
   columnFor,
+  finalStatusForIssue,
   extractOutputLinks,
   extractSection,
   LANE_LABELS,
   labelsForStatus,
+  isDoneStatus,
   matchesFilters,
+  moveStatusesForIssue,
   normalizeIssue,
   OWNER_LABELS,
   relativeTime,
@@ -124,6 +127,14 @@ test("attention list is 卡住, then 待验收, then 负责 Shawn", () => {
   assert.equal(attentionKind(review), "待验收");
   assert.equal(attentionKind(mine), "Shawn");
   assert.equal(attentionKind(published), "");
+  const finished = normalizeIssue({ number: 6, title: "f", labels: ["栏目/大蒜粒机研所", "状态/已完成", "负责/大蒜粒机研所写作"], updated_at: "2026-10-16T00:00:00Z", state: "closed" });
+  assert.equal(columnFor(finished), "已完成");
+  assert.equal(isDoneStatus(columnFor(finished)), true);
+  assert.equal(isDoneStatus(columnFor(published)), true);
+  assert.equal(finalStatusForIssue(finished), "已完成");
+  assert.equal(finalStatusForIssue(published), "已发布");
+  assert.deepEqual(moveStatusesForIssue(finished), ["待做", "进行中", "卡住", "待验收", "已完成"]);
+  assert.ok(!moveStatusesForIssue(published).includes("已完成"));
   assert.equal(columnFor(missing), "待做");
   assert.equal(missing.missingStatus, true);
   assert.equal(matchesFilters(stuck, { lane: "栏目/四时日月" }), false);
@@ -143,9 +154,12 @@ test("relative times use the Asia/Shanghai calendar", () => {
 
 test("demo desk covers every column and shows comment reasons", () => {
   const { issues, comments } = buildDemo(Date.parse("2026-10-16T10:00:00Z"));
-  const counts = Object.fromEntries(["待做", "进行中", "卡住", "待验收", "已发布"].map((status) => [status, 0]));
+  const counts = Object.fromEntries(["待做", "进行中", "卡住", "待验收", "已发布", "已完成"].map((status) => [status, 0]));
   for (const issue of issues) counts[columnFor(issue)] += 1;
-  assert.deepEqual(counts, { 待做: 2, 进行中: 3, 卡住: 2, 待验收: 3, 已发布: 2 });
+  assert.deepEqual(counts, { 待做: 2, 进行中: 3, 卡住: 2, 待验收: 3, 已发布: 2, 已完成: 1 });
+  const article = issues.find((issue) => issue.number === 116);
+  assert.equal(finalStatusForIssue(article), "已完成");
+  assert.equal(columnFor(article), "已完成");
   const stuck = issues.find((issue) => issue.number === 126);
   const related = comments.filter((comment) => comment.issueNumber === 126);
   assert.equal(resolveStuckReason(stuck.body, related), "抖音封面安全区把标题裁掉了，等 Shawn 定一行不超过 8 个字的标题。");

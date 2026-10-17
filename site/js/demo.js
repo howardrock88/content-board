@@ -194,6 +194,21 @@ Shawn 亲自核过标题后发出。可以关议题归档。
 `,
     }),
     issue(now, {
+      number: 116,
+      hoursAgo: 30,
+      title: "深读：上下文窗口不是记忆",
+      labels: ["栏目/大蒜粒机研所", "状态/已完成", "负责/大蒜粒机研所写作"],
+      body: `## 说明
+Shawn 已通过。文章不标已发布，写作 bot 标成已完成。
+
+## 产出链接
+- [公众号](https://example.com/context-window)
+
+## 卡住原因
+（未卡住就留空。）
+`,
+    }),
+    issue(now, {
       number: 117,
       hoursAgo: 6,
       title: "端侧模型到底能跑在什么芯片上",
@@ -238,6 +253,13 @@ Shawn 亲自核过标题后发出。可以关议题归档。
       user: "大蒜粒机研所写作",
       createdAt: ago(now, 3),
       body: "供给链前半写完了。今晚补公开财报里的产能数字，先不标卡住。",
+    }),
+    comment({
+      id: 6,
+      issue: 116,
+      user: "大蒜粒机研所写作",
+      createdAt: ago(now, 30),
+      body: "Shawn 已通过这篇文章。标成已完成，关闭归档。",
     }),
     comment({
       id: 5,
