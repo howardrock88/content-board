@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>概念 · 头版</title>
+  <style>
+    :root {
+      --table: #c9c1b4;
+      --paper: #f1ebdf;
+      --ink: #1a1714;
+      --soft: #6b645c;
+      --rule: #d4cbbc;
+      --accent: #c23a28;
+      --sans: Inter, "PingFang SC", "HarmonyOS Sans", "Noto Sans SC", "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif;
+      --song: "Songti SC", "Noto Serif SC", "Source Han Serif SC", "PingFang SC", "WenQuanYi Micro Hei", serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: var(--table); }
+    body {
+      font-family: var(--sans);
+      color: var(--ink);
+      letter-spacing: 0;
+    }
+    .sheet {
+      height: 100%;
+      padding: 22px;
+    }
+    .paper {
+      height: 100%;
+      background: var(--paper);
+      border-radius: 18px;
+      padding: 28px 40px 22px;
+      display: flex;
+      flex-direction: column;
+    }
+    .folio {
+      display: flex;
+      justify-content: space-between;
+      margin: 0;
+      color: var(--soft);
+      font-size: 13px;
+    }
+    .folio b { color: var(--ink); font-weight: 600; }
+    .rule { height: 1px; margin: 14px 0 0; background: var(--ink); }
+    .lead {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 292px;
+      gap: 36px;
+      min-height: 0;
+      padding: 28px 0 18px;
+    }
+    .kicker {
+      margin: 0;
+      color: var(--accent);
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .kicker.quiet { color: var(--soft); margin-top: 36px; }
+    h1 {
+      margin: 10px 0 0;
+      font-family: var(--song);
+      font-size: 84px;
+      font-weight: 400;
+      line-height: 1.02;
+      letter-spacing: 0;
+    }
+    .deck {
+      margin: 18px 0 0;
+      max-width: 15em;
+      font-size: 22px;
+      line-height: 1.45;
+    }
+    .byline { margin: 14px 0 0; color: var(--soft); font-size: 13px; }
+    h2 {
+      margin: 8px 0 0;
+      font-family: var(--song);
+      font-size: 32px;
+      font-weight: 400;
+      letter-spacing: 0;
+      line-height: 1.25;
+    }
+    .also p:last-child { margin: 8px 0 0; color: var(--soft); font-size: 15px; }
+    aside { border-left: 1px solid var(--rule); padding-left: 22px; }
+    .aside-label { margin: 0 0 8px; font-size: 13px; color: var(--soft); }
+    ol { list-style: none; margin: 0; padding: 0; }
+    li {
+      display: grid;
+      grid-template-columns: 36px 1fr;
+      gap: 8px;
+      padding: 14px 0;
+      border-top: 1px solid var(--rule);
+    }
+    li span {
+      font-family: Inter, sans-serif;
+      font-size: 13px;
+      color: var(--soft);
+      padding-top: 3px;
+    }
+    li strong { display: block; font-size: 16px; font-weight: 600; line-height: 1.35; }
+    li small { display: block; margin-top: 4px; color: var(--soft); font-size: 12px; }
+    .sections {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      border-top: 1px solid var(--ink);
+      padding-top: 16px;
+    }
+    .sec { padding-right: 28px; }
+    .sec + .sec { border-left: 1px solid var(--rule); padding-left: 28px; }
+    .sec h3 { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: 0; }
+    .plat { margin: 4px 0 0; color: var(--soft); font-size: 12px; }
+    .pulse { margin: 12px 0 0; font-size: 14px; line-height: 1.45; }
+    .latest { margin: 12px 0 0; font-size: 15px; font-weight: 600; line-height: 1.4; }
+    .state { margin: 4px 0 0; color: var(--soft); font-size: 12px; }
+    .state em { color: var(--accent); font-style: normal; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="sheet">
+    <article class="paper">
+      <p class="folio"><span><b>内容</b> · 卷一</span><span>十月十七日 · 星期六</span><span>北京</span></p>
+      <div class="rule"></div>
+      <div class="lead">
+        <div>
+          <p class="kicker">卡住 · 四时日月</p>
+          <h1>封面被裁掉了</h1>
+          <p class="deck">秋分那条，抖音安全区把标题裁了。等你定一行不超过八个字的字。</p>
+          <p class="byline">秋分食养封面返工 · 视频运营 · 一小时前</p>
+          <div class="also">
+            <p class="kicker quiet">待验收 · 隔洋看世界</p>
+            <h2>外媒标题核对清单</h2>
+            <p>本周三条标题。不要把预测写成已发生。</p>
+          </div>
+        </div>
+        <aside>
+          <p class="aside-label">今日要你看的</p>
+          <ol>
+            <li><span>01</span><div><strong>寒露：三个早睡动作</strong><small>四时日月 · 待验收</small></div></li>
+            <li><span>02</span><div><strong>外媒标题核对清单</strong><small>隔洋看世界 · 等你看</small></div></li>
+            <li><span>03</span><div><strong>为什么机器人公司都在囤数据</strong><small>大蒜粒机研所 · 待验收</small></div></li>
+            <li><span>04</span><div><strong>端侧模型跑在什么芯片上</strong><small>大蒜粒机研所 · 卡住</small></div></li>
+          </ol>
+        </aside>
+      </div>
+      <footer class="sections">
+        <section class="sec">
+          <h3>四时日月</h3>
+          <p class="plat">抖音 · 节气养生</p>
+          <p class="pulse">一条在拍，一条等你看，封面被卡住。</p>
+          <p class="latest">霜降：菜市场的萝卜，润燥不用甜汤</p>
+          <p class="state">进行中</p>
+        </section>
+        <section class="sec">
+          <h3>隔洋看世界</h3>
+          <p class="plat">今日头条 · 外媒看中国</p>
+          <p class="pulse">一条在剪，标题清单在你这里。</p>
+          <p class="latest">BBC 镜头里的中国高铁</p>
+          <p class="state">进行中</p>
+        </section>
+        <section class="sec">
+          <h3>大蒜粒机研所</h3>
+          <p class="plat">公众号 · 深读</p>
+          <p class="pulse">稿在等你看。芯片那篇缺一张对照。</p>
+          <p class="latest">深读：HBM 供给是怎么卡上的</p>
+          <p class="state"><em>一节卡住</em></p>
+        </section>
+      </footer>
+    </article>
+  </div>
+</body>
+</html>
