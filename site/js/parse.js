@@ -3,7 +3,8 @@
 
 export const REPO = { owner: "howardrock88", repo: "content-board" };
 
-export const STATUSES = ["待做", "进行中", "卡住", "待验收", "已发布"];
+export const STATUSES = ["待做", "进行中", "卡住", "待验收", "已发布", "已完成"];
+export const ARTICLE_LANE = "栏目/大蒜粒机研所";
 
 export const LANES = [
   {
@@ -49,7 +50,27 @@ export const BODY_TEMPLATE = `## 说明
 （未卡住就留空。卡住时写一句人话，并另发一条评论说明原因。）
 `;
 
-const DISPLAY_PRIORITY = ["卡住", "待验收", "进行中", "待做", "已发布"];
+const DISPLAY_PRIORITY = ["卡住", "待验收", "进行中", "待做", "已完成", "已发布"];
+
+export function isDoneStatus(status) {
+  return status === "已发布" || status === "已完成";
+}
+
+export function finalStatusForLane(label) {
+  return label === ARTICLE_LANE ? "已完成" : "已发布";
+}
+
+export function finalStatusForIssue(issue) {
+  return (issue?.lanes || []).includes(ARTICLE_LANE) ? "已完成" : "已发布";
+}
+
+export function stagesForLane(label) {
+  return ["待做", "进行中", "待验收", finalStatusForLane(label)];
+}
+
+export function moveStatusesForIssue(issue) {
+  return ["待做", "进行中", "卡住", "待验收", finalStatusForIssue(issue)];
+}
 
 export function laneMeta(label) {
   return LANES.find((lane) => lane.label === label) || null;
@@ -224,7 +245,7 @@ export function attentionRank(issue) {
   const kind = attentionKind(issue);
   if (kind === "卡住") return 0;
   if (kind === "待验收") return 1;
-  if (kind === "Shawn" && columnFor(issue) === "已发布") return 3;
+  if (kind === "Shawn" && isDoneStatus(columnFor(issue))) return 3;
   if (kind === "Shawn") return 2;
   return 9;
 }

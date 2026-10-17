@@ -449,7 +449,8 @@ html[data-view="line"] #line-view { display: flex; }
 .stage[data-status="待做"] { --hue: var(--todo); }
 .stage[data-status="进行中"] { --hue: var(--moving); }
 .stage[data-status="待验收"] { --hue: var(--review); }
-.stage[data-status="已发布"] { --hue: var(--shipped); }
+.stage[data-status="已发布"],
+.stage[data-status="已完成"] { --hue: var(--shipped); }
 .stage[data-status="卡住"] { --hue: var(--stuck); }
 .stage.is-drop { outline: 2px solid var(--primary); outline-offset: -2px; }
 .mini {

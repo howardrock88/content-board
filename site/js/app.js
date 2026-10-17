@@ -26,22 +26,24 @@ import {
   columnFor,
   commentsForIssue,
   extractOutputLinks,
+  finalStatusForIssue,
+  isDoneStatus,
   labelsForStatus,
   laneMeta,
   LANES,
   matchesFilters,
+  moveStatusesForIssue,
   OWNERS,
   relativeTime,
   renderMarkdown,
   resolveStuckReason,
   shanghaiDayKey,
-  STATUSES,
+  stagesForLane,
   upsertSection,
 } from "./parse.js";
 
 const PARAMS = new URLSearchParams(location.search);
 const DEMO = PARAMS.has("demo");
-const PIPELINE = ["待做", "进行中", "待验收", "已发布"];
 const THEME_KEY = "content-board:theme";
 
 const state = {
@@ -153,7 +155,7 @@ function filtersActive() {
 }
 
 function needsShawn(issue) {
-  return Boolean(attentionKind(issue)) && columnFor(issue) !== "已发布";
+  return Boolean(attentionKind(issue)) && !isDoneStatus(columnFor(issue));
 }
 
 function persist() {
@@ -226,8 +228,8 @@ function weekStartKey(date = new Date()) {
   return `${y}-${m}-${d}`;
 }
 
-function publishedThisWeek(issue, start = weekStartKey()) {
-  if (columnFor(issue) !== "已发布") return false;
+function doneThisWeek(issue, start = weekStartKey()) {
+  if (!isDoneStatus(columnFor(issue))) return false;
   const key = shanghaiDayKey(new Date(issue.updatedAt));
   return key >= start;
 }
@@ -329,6 +331,7 @@ const STATUS_TONE = {
   进行中: "moving",
   待验收: "review",
   已发布: "shipped",
+  已完成: "shipped",
   卡住: "stuck",
 };
 
@@ -337,8 +340,8 @@ function badge(name, tone) {
   return h("span", { class: cls }, [icon(name)]);
 }
 
-function progressBar(issues, pending) {
-  const counts = PIPELINE.map((status) => ({
+function progressBar(issues, pending, laneLabel) {
+  const counts = stagesForLane(laneLabel).map((status) => ({
     status,
     n: pending ? 0 : issues.filter((issue) => columnFor(issue) === status).length,
   }));
@@ -438,7 +441,7 @@ function actionButtons(issue) {
     const pass = h("button", { type: "button", class: "pass" }, "通过");
     pass.addEventListener("click", (event) => {
       event.stopPropagation();
-      commitStatus(issue.number, "已发布");
+      commitStatus(issue.number, finalStatusForIssue(issue));
     });
     actions.append(pass);
   }
@@ -454,12 +457,12 @@ function renderHome(visible) {
   const review = visible.filter((issue) => columnFor(issue) === "待验收");
   const stuck = visible.filter((issue) => columnFor(issue) === "卡住");
   const moving = visible.filter((issue) => columnFor(issue) === "进行中");
-  const shipped = visible.filter((issue) => publishedThisWeek(issue));
+  const shipped = visible.filter((issue) => doneThisWeek(issue));
   els.stats.replaceChildren(
     statTile(mark || String(review.length), "等你拍板", "review", "check"),
     statTile(mark || String(stuck.length), "卡住", "stuck", "alert"),
     statTile(mark || String(moving.length), "进行中", "moving", "clock"),
-    statTile(mark || String(shipped.length), "本周已发布", "shipped", "send"),
+    statTile(mark || String(shipped.length), "本周完成", "shipped", "send"),
   );
   renderWait(review, { failed, loading, knownEmpty });
   renderStuck(stuck, { failed, loading });
@@ -582,9 +585,9 @@ function renderChannels(visible, { failed, loading }) {
       continue;
     }
     const laneIssues = visible.filter((issue) => issue.lanes.includes(lane.label));
-    main.append(progressBar(laneIssues, failed || loading));
+    main.append(progressBar(laneIssues, failed || loading, lane.label));
     const counts = h("div", { class: "counts" });
-    for (const status of PIPELINE) {
+    for (const status of stagesForLane(lane.label)) {
       const count = failed || loading ? "—" : String(laneIssues.filter((issue) => columnFor(issue) === status).length);
       counts.append(h("div", { class: `tone-${STATUS_TONE[status]}` }, [
         h("b", {}, count),
@@ -594,12 +597,12 @@ function renderChannels(visible, { failed, loading }) {
     const stuck = laneIssues.filter((issue) => columnFor(issue) === "卡住");
     const stuckCount = failed || loading ? "—" : String(stuck.length);
     main.append(counts, h("p", { class: `stuck-note${stuck.length ? "" : " is-zero"}` }, `${stuckCount} 卡住`));
-    const recent = [...laneIssues].sort(byUpdatedDesc).filter((issue) => columnFor(issue) !== "已发布").slice(0, 3);
+    const recent = [...laneIssues].sort(byUpdatedDesc).filter((issue) => !isDoneStatus(columnFor(issue))).slice(0, 3);
     const body = h("div", { class: "tile-body" });
     if (failed) body.append(h("p", { class: "quiet" }, "还没读到。"));
     else if (loading) body.append(h("p", { class: "quiet" }, "正在读取…"));
     else if (!laneIssues.length) body.append(h("p", { class: "quiet" }, "还没有内容。"));
-    else if (!recent.length) body.append(h("p", { class: "quiet" }, "最近都已发布。"));
+    else if (!recent.length) body.append(h("p", { class: "quiet" }, "最近都完成了。"));
     else {
       for (const issue of recent) {
         const row = h("div", { class: "row", "data-id": issue.number }, [
@@ -692,7 +695,7 @@ function renderLine(visible) {
       ]),
     ]));
     const body = h("div", { class: "lane-body", "data-lane": lane.label });
-    for (const status of PIPELINE) {
+    for (const status of stagesForLane(lane.label)) {
       body.append(renderStage(status, laneIssues.filter((issue) => columnFor(issue) === status)));
     }
     body.append(renderStage("卡住", laneIssues.filter((issue) => columnFor(issue) === "卡住"), true));
@@ -782,7 +785,7 @@ function fillDrawer(number) {
   if (column === "卡住") content.append(h("p", { class: "reason-callout" }, reason ? `卡住：${reason}` : "卡住：还没有写原因"));
   content.append(h("h3", { class: "section-label" }, "移动到"));
   const moves = h("div", { class: "move-row" });
-  for (const status of STATUSES) {
+  for (const status of moveStatusesForIssue(issue)) {
     const current = column === status && !issue.missingStatus && !issue.duplicateStatus;
     const button = h("button", { type: "button", class: `tone-${STATUS_TONE[status] || "todo"}${current ? " is-current" : ""}` }, status);
     button.disabled = !state.writable || current;
@@ -838,6 +841,7 @@ function replaceIssue(issue) {
 async function commitStatus(number, status) {
   const current = state.issues.find((item) => item.number === number);
   if (!current || !state.writable) return;
+  if (isDoneStatus(status)) status = finalStatusForIssue(current);
   const same = columnFor(current) === status && !current.missingStatus && !current.duplicateStatus;
   if (same) return;
   let reason = "";
@@ -849,12 +853,15 @@ async function commitStatus(number, status) {
       required: true,
     });
     if (!reason) return;
-  } else if (status === "已发布") {
+  } else if (isDoneStatus(status)) {
+    const article = status === "已完成";
     const ok = await ask({
-      title: "标成已发布",
-      text: "已发布只由 Shawn 确认。确定把这条内容标成已发布？",
+      title: article ? "标成已完成" : "标成已发布",
+      text: article
+        ? "这是文章。Shawn 通过后标成已完成，不要标已发布。"
+        : "这是视频。确认已经公开发出后，标成已发布。",
       confirm: true,
-      okLabel: "标成已发布",
+      okLabel: article ? "标成已完成" : "标成已发布",
     });
     if (!ok) return;
   }
