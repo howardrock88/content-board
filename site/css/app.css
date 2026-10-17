@@ -54,7 +54,9 @@ a { color: inherit; }
   color: #fff;
   flex: none;
 }
-[data-theme="dark"] .badge { color: #0e1014; }
+.badge .icon,
+.badge svg { color: #fff; }
+.badge svg { stroke: currentColor; }
 .badge .icon { width: 16px; height: 16px; }
 .badge.sm { width: 26px; height: 26px; border-radius: 8px; }
 .badge.sm .icon { width: 14px; height: 14px; }
@@ -234,7 +236,7 @@ a { color: inherit; }
   letter-spacing: 0;
   color: var(--hue, var(--ink));
 }
-.stat span { color: var(--ink-soft); font-size: 13px; }
+.stat-copy span { color: var(--ink-soft); font-size: 13px; }
 
 .tile, .channel {
   display: flex;
