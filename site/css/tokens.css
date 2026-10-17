@@ -1,48 +1,71 @@
-/* Flat tiles. Neutrals, one accent, no shadow, no gradient. */
+/* Clean light palette. Three column hues, four status hues. */
 
 :root,
 [data-theme="light"] {
   color-scheme: light;
-  --canvas: #ddd9d1;
-  --surface: #f6f4f0;
-  --inset: #ece8e1;
-  --ink: #1c1a17;
-  --ink-soft: #5e594f;
-  --line: #d4cfc6;
-  --primary: #c2412d;
+  --canvas: #f5f6f8;
+  --surface: #ffffff;
+  --inset: #f3f4f7;
+  --hover: #f7f8fb;
+  --ink: #1a1d23;
+  --ink-soft: #5c6573;
+  --line: #e6e8ee;
+  --line-strong: #d5d8e2;
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --primary: #5b50e6;
   --primary-ink: #ffffff;
-  --primary-hover: #a33524;
-  --invert: #241f1c;
-  --invert-ink: #f6f1e8;
-  --invert-soft: #b7b0a6;
-  --lane-1: #8f7340;
-  --lane-2: #4e6e86;
-  --lane-3: #8a5a68;
-  --stuck: #b4332a;
-  --stuck-ink: #8e2e28;
-  --radius: 18px;
+  --primary-hover: #4a40d4;
+  --review: #5b50e6;
+  --review-tint: #eeedfc;
+  --stuck: #e11d48;
+  --stuck-tint: #fdecef;
+  --moving: #1d7ae0;
+  --moving-tint: #e7f2fc;
+  --shipped: #14945a;
+  --shipped-tint: #e7f6ee;
+  --todo: #5c6573;
+  --todo-tint: #f1f2f5;
+  --lane-1: #0c9b86;
+  --lane-1-tint: #e7f6f3;
+  --lane-2: #2f6fe0;
+  --lane-2-tint: #e9f0fc;
+  --lane-3: #7a52d4;
+  --lane-3-tint: #f2ecfb;
+  --radius: 16px;
   --radius-in: 10px;
   --font: Inter, "PingFang SC", "HarmonyOS Sans", "Noto Sans SC", "Microsoft YaHei", "WenQuanYi Micro Hei", "Droid Sans Fallback", sans-serif;
-  --gap: 12px;
+  --gap: 16px;
+  --pad: 20px;
 }
 
 [data-theme="dark"] {
   color-scheme: dark;
-  --canvas: #12110f;
-  --surface: #1c1b18;
-  --inset: #262420;
-  --ink: #f4f1ea;
-  --ink-soft: #a9a49a;
-  --line: #34322e;
-  --primary: #e36a52;
-  --primary-ink: #1c100c;
-  --primary-hover: #f08a74;
-  --invert: #f3eee6;
-  --invert-ink: #1c1916;
-  --invert-soft: #5e594f;
-  --lane-1: #c4a36a;
-  --lane-2: #8aabbe;
-  --lane-3: #c49aaa;
-  --stuck: #e2685c;
-  --stuck-ink: #f0b4ae;
+  --canvas: #0e1014;
+  --surface: #171a21;
+  --inset: #20242e;
+  --hover: #222733;
+  --ink: #f3f4f6;
+  --ink-soft: #a1a8b5;
+  --line: #2a2f3a;
+  --line-strong: #3a4150;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --primary: #8b84f5;
+  --primary-ink: #0e1014;
+  --primary-hover: #a39df8;
+  --review: #8b84f5;
+  --review-tint: #26244a;
+  --stuck: #ff6b81;
+  --stuck-tint: #3a1c26;
+  --moving: #5ba8f5;
+  --moving-tint: #17283d;
+  --shipped: #3dcc84;
+  --shipped-tint: #143226;
+  --todo: #a1a8b5;
+  --todo-tint: #232833;
+  --lane-1: #2fcbb4;
+  --lane-1-tint: #14332f;
+  --lane-2: #6b96f5;
+  --lane-2-tint: #1a2744;
+  --lane-3: #b08af0;
+  --lane-3-tint: #2a2140;
 }

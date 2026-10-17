@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#DDD9D1">
+    <meta name="theme-color" content="#F5F6F8">
     <meta name="description" content="Shawn 的内容：等你拍板、卡住原因、三条线的进度。数据来自本仓库的 GitHub Issues。">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -19,7 +19,7 @@
           theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
         }
         document.documentElement.dataset.theme = theme;
-        document.querySelector('meta[name="theme-color"]').content = theme === "dark" ? "#12110F" : "#DDD9D1";
+        document.querySelector('meta[name="theme-color"]').content = theme === "dark" ? "#0E1014" : "#F5F6F8";
         var view = new URLSearchParams(location.search).get("view");
         document.documentElement.dataset.view = view === "board" || view === "line" ? "line" : "today";
       } catch (e) {}

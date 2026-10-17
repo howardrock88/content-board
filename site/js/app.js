@@ -259,7 +259,7 @@ function applyTheme(theme) {
   document.documentElement.dataset.theme = theme;
   try { localStorage.setItem(THEME_KEY, theme); } catch { /* ignore */ }
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.content = theme === "dark" ? "#12110F" : "#DDD9D1";
+  if (meta) meta.content = theme === "dark" ? "#0E1014" : "#F5F6F8";
   if (els.theme) els.theme.setAttribute("aria-label", theme === "dark" ? "切换到浅色" : "切换到深色");
 }
 
@@ -318,10 +318,71 @@ function activeLane() {
   return LANES[0].label;
 }
 
-function statTile(value, label, extra = "") {
-  return h("article", { class: `stat${extra ? ` ${extra}` : ""}` }, [
-    h("b", {}, value),
-    h("span", {}, label),
+const LANE_TONE = {
+  "栏目/四时日月": "1",
+  "栏目/隔洋看世界": "2",
+  "栏目/大蒜粒机研所": "3",
+};
+const LANE_ICON = { 1: "leaf", 2: "globe", 3: "cpu" };
+const STATUS_TONE = {
+  待做: "todo",
+  进行中: "moving",
+  待验收: "review",
+  已发布: "shipped",
+  卡住: "stuck",
+};
+
+function badge(name, tone) {
+  const cls = String(tone).startsWith("lane-") ? `badge ${tone}` : `badge tone-${tone}`;
+  return h("span", { class: cls }, [icon(name)]);
+}
+
+function progressBar(issues, pending) {
+  const counts = PIPELINE.map((status) => ({
+    status,
+    n: pending ? 0 : issues.filter((issue) => columnFor(issue) === status).length,
+  }));
+  const total = counts.reduce((sum, item) => sum + item.n, 0);
+  const bar = h("div", {
+    class: "bar",
+    role: "img",
+    "aria-label": counts.map((item) => `${item.status} ${pending ? "—" : item.n}`).join("，"),
+  });
+  if (!total) bar.append(h("i", { class: "seg tone-todo", style: "flex:1" }));
+  else {
+    for (const item of counts) {
+      if (!item.n) continue;
+      bar.append(h("i", { class: `seg tone-${STATUS_TONE[item.status]}`, style: `flex:${item.n}` }));
+    }
+  }
+  return bar;
+}
+
+function initial(name) {
+  const text = String(name || "").trim();
+  if (!text || text === "未指定") return "?";
+  return /^[A-Za-z]/.test(text) ? text.slice(0, 1).toUpperCase() : text.slice(0, 1);
+}
+
+function avatar(name, lane) {
+  const tone = LANE_TONE[lane] ? `lane-${LANE_TONE[lane]}` : "tone-todo";
+  return h("span", { class: `avatar ${tone}`, title: name || "未指定" }, initial(name));
+}
+
+function statusChip(status) {
+  return h("span", { class: `chip tone-${STATUS_TONE[status] || "todo"}` }, status);
+}
+
+function laneChip(lane) {
+  const meta = lane ? laneMeta(lane) : null;
+  const tone = LANE_TONE[lane] ? `lane-${LANE_TONE[lane]}` : "tone-todo";
+  return h("span", { class: `chip ${tone}` }, meta ? meta.name : "未分栏目");
+}
+
+function statTile(value, label, tone, iconName) {
+  return h("article", { class: `stat tone-${tone}` }, [
+    badge(iconName, tone),
+    h("div", { class: "stat-copy" }, [h("b", {}, value), h("span", {}, label)]),
   ]);
 }
 
@@ -353,14 +414,15 @@ function brief(issue) {
   return line.length > 64 ? `${line.slice(0, 64)}…` : line;
 }
 
-function metaLine(issue, extra = "") {
-  const lane = issue.lanes[0];
-  const meta = lane ? laneMeta(lane) : null;
-  const owners = issue.owners.length ? issue.owners.join("、") : "未指定";
-  const bits = [meta ? meta.name : "未分栏目", extra, owners, relativeTime(issue.updatedAt)].filter(Boolean);
-  return h("span", { class: "row-meta" }, [
-    lane ? h("span", { class: "dot", "data-lane": lane }) : null,
-    bits.join(" · "),
+function ownerName(issue) {
+  return issue.owners.length ? issue.owners.join("、") : "未指定";
+}
+
+function issueFacts(issue) {
+  return h("span", { class: "chips" }, [
+    laneChip(issue.lanes[0]),
+    statusChip(columnFor(issue)),
+    h("span", { class: "when" }, relativeTime(issue.updatedAt)),
   ]);
 }
 
@@ -394,10 +456,10 @@ function renderHome(visible) {
   const moving = visible.filter((issue) => columnFor(issue) === "进行中");
   const shipped = visible.filter((issue) => publishedThisWeek(issue));
   els.stats.replaceChildren(
-    statTile(mark || String(review.length), "等你拍板", "is-accent"),
-    statTile(mark || String(stuck.length), "卡住", "is-invert"),
-    statTile(mark || String(moving.length), "进行中"),
-    statTile(mark || String(shipped.length), "本周已发布"),
+    statTile(mark || String(review.length), "等你拍板", "review", "check"),
+    statTile(mark || String(stuck.length), "卡住", "stuck", "alert"),
+    statTile(mark || String(moving.length), "进行中", "moving", "clock"),
+    statTile(mark || String(shipped.length), "本周已发布", "shipped", "send"),
   );
   renderWait(review, { failed, loading, knownEmpty });
   renderStuck(stuck, { failed, loading });
@@ -407,7 +469,7 @@ function renderHome(visible) {
 
 function renderWait(items, { failed, loading, knownEmpty }) {
   const sorted = [...items].sort(byUpdatedDesc);
-  els.wait.replaceChildren(tileHead("等你拍板", failed || loading ? "" : String(sorted.length)));
+  els.wait.replaceChildren(tileHead("等你拍板", failed || loading ? "" : String(sorted.length), "review", "check"));
   const body = h("div", { class: "tile-body" });
   if (loading) {
     body.append(h("p", { class: "quiet" }, "正在读取议题…"));
@@ -425,10 +487,11 @@ function renderWait(items, { failed, loading, knownEmpty }) {
   } else {
     for (const issue of sorted) {
       const row = h("div", { class: "row", "data-id": issue.number }, [
-        h("div", {}, [
+        avatar(ownerName(issue), issue.lanes[0]),
+        h("div", { class: "row-copy" }, [
           h("span", { class: "row-title" }, issue.title),
-          brief(issue) ? h("span", { class: "row-meta" }, brief(issue)) : null,
-          metaLine(issue),
+          brief(issue) ? h("span", { class: "brief" }, brief(issue)) : null,
+          issueFacts(issue),
         ]),
         actionButtons(issue),
       ]);
@@ -441,7 +504,7 @@ function renderWait(items, { failed, loading, knownEmpty }) {
 
 function renderStuck(items, { failed, loading }) {
   const sorted = [...items].sort(byUpdatedDesc);
-  els.stuck.replaceChildren(tileHead("卡住", failed || loading ? "" : String(sorted.length)));
+  els.stuck.replaceChildren(tileHead("卡住", failed || loading ? "" : String(sorted.length), "stuck", "alert"));
   const body = h("div", { class: "tile-body" });
   if (loading) body.append(h("p", { class: "quiet" }, "正在读取议题…"));
   else if (failed) body.append(h("p", { class: "quiet" }, "没能读到卡住的条目。"));
@@ -450,10 +513,11 @@ function renderStuck(items, { failed, loading }) {
     for (const issue of sorted) {
       const reason = reasonFor(issue) || "还没有写原因";
       const row = h("div", { class: "row", "data-id": issue.number }, [
-        h("div", {}, [
+        avatar(ownerName(issue), issue.lanes[0]),
+        h("div", { class: "row-copy" }, [
           h("span", { class: "row-title" }, issue.title),
           h("span", { class: "reason" }, reason),
-          metaLine(issue),
+          issueFacts(issue),
         ]),
       ]);
       bindRow(row, issue.number);
@@ -465,18 +529,24 @@ function renderStuck(items, { failed, loading }) {
 
 function renderFeed(visible, { failed, loading }) {
   const events = failed || loading ? [] : activityEvents(visible);
-  els.feed.replaceChildren(tileHead("最近动态", events.length ? String(events.length) : ""));
+  els.feed.replaceChildren(tileHead("最近动态", events.length ? String(events.length) : "", "neutral", "pulse"));
   const body = h("div", { class: "tile-body" });
   if (loading) body.append(h("p", { class: "quiet" }, "正在读取议题…"));
   else if (failed) body.append(h("p", { class: "quiet" }, "动态还没读到。"));
   else if (!events.length) body.append(h("p", { class: "quiet" }, "还没有新的动态。"));
   else {
     for (const event of events) {
-      const when = event.who ? `${event.who} · ${relativeTime(event.at)}` : relativeTime(event.at);
-      const row = h("div", { class: `row feed${event.stuck ? " is-stuck" : ""}`, "data-id": event.number }, [
-        h("span", { class: "feed-time" }, when),
-        h("span", { class: "feed-title" }, event.title),
-        event.excerpt ? h("span", { class: "feed-excerpt" }, event.excerpt) : null,
+      const row = h("div", { class: "row", "data-id": event.number }, [
+        avatar(event.who || "动", event.lane),
+        h("div", { class: "row-copy" }, [
+          h("span", { class: "row-title" }, event.title),
+          event.excerpt ? h("span", { class: event.stuck ? "reason" : "brief" }, event.excerpt) : null,
+          h("span", { class: "chips" }, [
+            event.lane ? laneChip(event.lane) : null,
+            event.stuck ? statusChip("卡住") : null,
+            h("span", { class: "when" }, event.who ? `${event.who} · ${relativeTime(event.at)}` : relativeTime(event.at)),
+          ]),
+        ]),
       ]);
       bindRow(row, event.number);
       body.append(row);
@@ -485,10 +555,10 @@ function renderFeed(visible, { failed, loading }) {
   els.feed.append(body);
 }
 
-function tileHead(title, count) {
-  return h("div", { class: "tile-head" }, [
-    h("h2", {}, title),
-    count ? h("span", {}, count) : null,
+function tileHead(title, count, tone, iconName) {
+  return h("div", { class: `tile-head tone-${tone}` }, [
+    h("div", { class: "tile-title" }, [badge(iconName, tone), h("h2", {}, title)]),
+    count ? h("span", { class: "count" }, count) : null,
   ]);
 }
 
@@ -496,30 +566,34 @@ function renderChannels(visible, { failed, loading }) {
   els.channels.replaceChildren();
   for (const lane of LANES) {
     const excluded = state.filters.lane !== "all" && state.filters.lane !== lane.label;
-    const tile = h("article", { class: `channel${excluded ? " is-muted" : ""}` });
-    tile.append(
-      h("h3", { class: "channel-name" }, [h("span", { class: "dot", "data-lane": lane.label }), lane.name]),
-      h("p", { class: "channel-plat" }, lane.platform),
-    );
+    const tone = LANE_TONE[lane.label];
+    const tile = h("article", { class: `channel${excluded ? " is-muted" : ""}`, "data-lane": lane.label });
+    tile.append(h("div", { class: "channel-top" }, [
+      h("div", { class: "channel-id" }, [
+        badge(LANE_ICON[tone], `lane-${tone}`),
+        h("div", {}, [h("h3", { class: "channel-name" }, lane.name), h("p", { class: "channel-plat" }, lane.platform)]),
+      ]),
+    ]));
+    const main = h("div", { class: "channel-main" });
     if (excluded) {
-      tile.append(h("p", { class: "quiet" }, "这条线不在当前筛选里。"));
+      main.append(h("p", { class: "quiet" }, "这条线不在当前筛选里。"));
+      tile.append(main);
       els.channels.append(tile);
       continue;
     }
     const laneIssues = visible.filter((issue) => issue.lanes.includes(lane.label));
+    main.append(progressBar(laneIssues, failed || loading));
     const counts = h("div", { class: "counts" });
     for (const status of PIPELINE) {
       const count = failed || loading ? "—" : String(laneIssues.filter((issue) => columnFor(issue) === status).length);
-      counts.append(h("div", { class: status === "待验收" && count !== "0" && count !== "—" ? "hot" : "" }, [
+      counts.append(h("div", { class: `tone-${STATUS_TONE[status]}` }, [
         h("b", {}, count),
         h("small", {}, status),
       ]));
     }
-    tile.append(counts);
     const stuck = laneIssues.filter((issue) => columnFor(issue) === "卡住");
-    if (!failed && !loading && stuck.length) {
-      tile.append(h("p", { class: "stuck-note" }, `${stuck.length} 件卡住`));
-    }
+    const stuckCount = failed || loading ? "—" : String(stuck.length);
+    main.append(counts, h("p", { class: `stuck-note${stuck.length ? "" : " is-zero"}` }, `${stuckCount} 卡住`));
     const recent = [...laneIssues].sort(byUpdatedDesc).filter((issue) => columnFor(issue) !== "已发布").slice(0, 3);
     const body = h("div", { class: "tile-body" });
     if (failed) body.append(h("p", { class: "quiet" }, "还没读到。"));
@@ -529,16 +603,18 @@ function renderChannels(visible, { failed, loading }) {
     else {
       for (const issue of recent) {
         const row = h("div", { class: "row", "data-id": issue.number }, [
-          h("div", {}, [
+          avatar(ownerName(issue), issue.lanes[0]),
+          h("div", { class: "row-copy" }, [
             h("span", { class: "row-title" }, issue.title),
-            h("span", { class: "row-meta" }, `${columnFor(issue)} · ${relativeTime(issue.updatedAt)}`),
+            issueFacts(issue),
           ]),
         ]);
         bindRow(row, issue.number);
         body.append(row);
       }
     }
-    tile.append(body);
+    main.append(body);
+    tile.append(main);
     els.channels.append(tile);
   }
 }
@@ -556,6 +632,7 @@ function activityEvents(visible) {
       number: issue.number,
       excerpt: excerpt(comment.body),
       who: comment.user,
+      lane: issue.lanes[0] || "",
       stuck: /卡住原因\s*[:：]/.test(comment.body || ""),
     });
   }
@@ -566,20 +643,22 @@ function activityEvents(visible) {
     title: issue.title,
     number: issue.number,
     excerpt: columnFor(issue),
-    who: "",
+    who: issue.owners[0] || "",
+    lane: issue.lanes[0] || "",
     stuck: columnFor(issue) === "卡住",
   }));
 }
 
 function renderLine(visible) {
   const laneId = activeLane();
-  const tops = new Map([...els.board.querySelectorAll(".lane")].map((lane) => [lane.dataset.lane, lane.scrollTop]));
+  const tops = new Map([...els.board.querySelectorAll(".lane-body")].map((lane) => [lane.dataset.lane, lane.scrollTop]));
   els.lineSwitch.replaceChildren();
   for (const lane of LANES) {
     const button = h("button", {
       type: "button",
-      class: lane.label === laneId ? "is-current" : "",
+      class: `${lane.label === laneId ? "is-current" : ""} lane-${LANE_TONE[lane.label]}`,
       role: "tab",
+      "data-lane": lane.label,
       "aria-selected": lane.label === laneId ? "true" : "false",
     }, lane.name);
     button.addEventListener("click", () => {
@@ -605,18 +684,22 @@ function renderLine(visible) {
       "data-lane": lane.label,
       "aria-label": lane.name,
     });
+    const tone = LANE_TONE[lane.label];
     section.append(h("div", { class: "lane-head" }, [
-      h("span", { class: "dot", "data-lane": lane.label }),
-      h("h2", {}, lane.name),
-      h("small", {}, lane.platform),
+      h("div", { class: "lane-id" }, [
+        badge(LANE_ICON[tone], `lane-${tone}`),
+        h("div", {}, [h("h2", {}, lane.name), h("small", {}, lane.platform)]),
+      ]),
     ]));
+    const body = h("div", { class: "lane-body", "data-lane": lane.label });
     for (const status of PIPELINE) {
-      section.append(renderStage(status, laneIssues.filter((issue) => columnFor(issue) === status)));
+      body.append(renderStage(status, laneIssues.filter((issue) => columnFor(issue) === status)));
     }
-    section.append(renderStage("卡住", laneIssues.filter((issue) => columnFor(issue) === "卡住"), true));
+    body.append(renderStage("卡住", laneIssues.filter((issue) => columnFor(issue) === "卡住"), true));
+    section.append(body);
     els.board.append(section);
   }
-  for (const lane of els.board.querySelectorAll(".lane")) {
+  for (const lane of els.board.querySelectorAll(".lane-body")) {
     lane.scrollTop = tops.get(lane.dataset.lane) || 0;
   }
 }
@@ -648,11 +731,15 @@ function renderMini(issue) {
       title: "拖拽以更改状态",
     }, [icon("grip")]));
   }
-  const body = h("div", {});
+  const body = h("div", { class: "row-copy" });
   body.append(h("h3", {}, issue.title));
-  const owners = issue.owners.length ? issue.owners.join("、") : "未指定";
-  const flags = [issue.missingStatus ? "未标状态" : "", issue.duplicateStatus ? "状态重复" : ""].filter(Boolean).join(" · ");
-  body.append(h("p", {}, [owners, relativeTime(issue.updatedAt), flags].filter(Boolean).join(" · ")));
+  const flags = [issue.missingStatus ? "未标状态" : "", issue.duplicateStatus ? "状态重复" : ""].filter(Boolean);
+  body.append(h("p", { class: "chips" }, [
+    avatar(ownerName(issue), issue.lanes[0]),
+    laneChip(issue.lanes[0]),
+    statusChip(column),
+    h("span", { class: "when" }, [relativeTime(issue.updatedAt), flags.join(" · ")].filter(Boolean).join(" · ")),
+  ]));
   if (column === "卡住") {
     body.append(h("p", { class: "stuck-reason" }, reasonFor(issue) || "还没有写原因"));
   }
@@ -686,10 +773,7 @@ function fillDrawer(number) {
   const content = els.drawerContent;
   content.replaceChildren();
   const tags = h("div", { class: "tags" });
-  for (const label of issue.lanes) {
-    const meta = laneMeta(label);
-    tags.append(h("span", { class: "tag" }, [h("span", { class: "dot", "data-lane": label }), meta ? meta.name : label]));
-  }
+  for (const label of issue.lanes) tags.append(h("span", { class: "tag" }, laneChip(label)));
   content.append(
     h("p", { class: "drawer-kicker" }, `#${issue.number} · ${absoluteTime(issue.updatedAt)}`),
     h("h2", {}, issue.title),
@@ -700,7 +784,7 @@ function fillDrawer(number) {
   const moves = h("div", { class: "move-row" });
   for (const status of STATUSES) {
     const current = column === status && !issue.missingStatus && !issue.duplicateStatus;
-    const button = h("button", { type: "button", class: current ? "is-current" : "" }, status);
+    const button = h("button", { type: "button", class: `tone-${STATUS_TONE[status] || "todo"}${current ? " is-current" : ""}` }, status);
     button.disabled = !state.writable || current;
     button.addEventListener("click", () => commitStatus(issue.number, status));
     moves.append(button);
@@ -1192,11 +1276,11 @@ function onPointerMove(event) {
   const status = statusAt(event.clientX, event.clientY);
   drag.hover = status;
   document.querySelectorAll(".stage[data-status]").forEach((node) => node.classList.toggle("is-drop", Boolean(status) && node.dataset.status === status));
-  const lane = document.elementFromPoint(event.clientX, event.clientY)?.closest(".lane");
-  if (lane) {
-    const rect = lane.getBoundingClientRect();
-    if (event.clientY < rect.top + 40) lane.scrollTop -= 14;
-    else if (event.clientY > rect.bottom - 40) lane.scrollTop += 14;
+  const scroller = document.elementFromPoint(event.clientX, event.clientY)?.closest(".lane-body");
+  if (scroller) {
+    const rect = scroller.getBoundingClientRect();
+    if (event.clientY < rect.top + 36) scroller.scrollTop -= 14;
+    else if (event.clientY > rect.bottom - 36) scroller.scrollTop += 14;
   }
 }
 
