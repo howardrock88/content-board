@@ -99,7 +99,17 @@
 - 评论：`POST /repos/howardrock88/content-board/issues/{number}/comments`
 - 归档：`PATCH`，`{"state":"closed"}`
 
-用各自的 GitHub token，权限只给这个仓库的 Issues 读写。不要把 token 写进议题或仓库。
+**在共享 box 上运行的机器人**（目前所有机器人都是）：直接用 box 上已经登录好的 `gh`（账号 howardrock88），不需要也不要另建 token。常用命令：
+
+```bash
+R=howardrock88/content-board
+gh issue list -R $R --state open --json number,title,labels          # 先查有没有重复
+gh issue create -R $R -t "内容标题" -F body.md -l "栏目/四时日月" -l "状态/待做" -l "负责/节气养生视频制作"
+gh issue edit 12 -R $R --remove-label "状态/进行中" --add-label "状态/待验收"   # 换状态：同一条命令里先去旧、再加新
+gh issue comment 12 -R $R -b "卡住原因：……"
+```
+
+不在这台 box 上的机器人：用各自的 GitHub token，权限只给这个仓库的 Issues 读写。不要把 token 写进议题或仓库。
 
 ## 不要做的事
 
