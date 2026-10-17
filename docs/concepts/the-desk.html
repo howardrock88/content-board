@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>概念 · 案头</title>
+  <style>
+    :root {
+      --room: #e4ddd2;
+      --paper: #f7f4ee;
+      --ink: #1c1916;
+      --soft: #746e64;
+      --accent: #b42318;
+      --sans: Inter, "PingFang SC", "HarmonyOS Sans", "Noto Sans SC", "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: var(--room); color: var(--ink); }
+    body { font-family: var(--sans); letter-spacing: 0; }
+    .desk {
+      height: 100%;
+      padding: 56px 72px 40px;
+      display: grid;
+      grid-template-columns: 1fr 520px;
+      grid-template-rows: 1fr auto;
+      column-gap: 64px;
+    }
+    .date { margin: 0; color: var(--soft); font-size: 15px; }
+    h1 {
+      margin: 12px 0 0;
+      font-size: 108px;
+      font-weight: 400;
+      line-height: 1;
+      letter-spacing: 0;
+    }
+    .sentence { margin: 28px 0 0; font-size: 28px; line-height: 1.4; max-width: 12em; }
+    .whisper { margin: 10px 0 0; color: var(--soft); font-size: 16px; }
+    .rest { margin-top: 36px; }
+    .rest p { margin: 0; }
+    .rest .item { padding: 12px 0; border-top: 1px solid rgba(28, 25, 22, 0.14); max-width: 22em; }
+    .rest strong { display: block; font-size: 18px; font-weight: 500; }
+    .rest span { display: block; margin-top: 4px; color: var(--soft); font-size: 13px; }
+    .letter {
+      grid-column: 2;
+      grid-row: 1;
+      align-self: center;
+      background: var(--paper);
+      border-radius: 28px;
+      padding: 40px 40px 36px;
+      box-shadow: 0 1px 1px rgba(40, 32, 24, 0.04), 0 24px 50px rgba(40, 32, 24, 0.12);
+      transform: rotate(-0.5deg);
+    }
+    .letter .kicker { margin: 0; color: var(--accent); font-size: 14px; font-weight: 600; }
+    .letter h2 {
+      margin: 16px 0 0;
+      font-size: 40px;
+      font-weight: 500;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+    .letter .reason { margin: 18px 0 0; font-size: 18px; line-height: 1.5; }
+    .letter .ask {
+      margin: 28px 0 0;
+      padding-top: 16px;
+      border-top: 1px solid rgba(28, 25, 22, 0.12);
+      font-size: 15px;
+    }
+    .drawers {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 32px;
+      padding-top: 22px;
+      border-top: 1px solid rgba(28, 25, 22, 0.16);
+    }
+    .drawers h3 { margin: 0; font-size: 16px; font-weight: 600; letter-spacing: 0; }
+    .drawers .plat { margin: 4px 0 0; color: var(--soft); font-size: 12px; }
+    .drawers .count { margin: 10px 0 0; font-size: 14px; }
+    .drawers .latest { margin: 6px 0 0; color: var(--soft); font-size: 13px; line-height: 1.4; }
+  </style>
+</head>
+<body>
+  <div class="desk">
+    <div>
+      <p class="date">十月十七日 · 星期六 · 北京</p>
+      <h1>早上好</h1>
+      <p class="sentence">今天有 3 件事等你拍板。</p>
+      <p class="whisper">还有 2 件卡住了。最急的那件在右边。</p>
+      <div class="rest">
+        <div class="item"><strong>外媒标题核对清单</strong><span>隔洋看世界 · 待验收</span></div>
+        <div class="item"><strong>为什么机器人公司都在囤数据</strong><span>大蒜粒机研所 · 待验收</span></div>
+        <div class="item"><strong>寒露：三个早睡动作</strong><span>四时日月 · 待验收</span></div>
+      </div>
+    </div>
+    <article class="letter">
+      <p class="kicker">卡住 · 四时日月</p>
+      <h2>秋分食养封面返工</h2>
+      <p class="reason">抖音封面安全区把标题裁掉了。等你定一行不超过八个字的字。</p>
+      <p class="ask">另一件也停着：端侧模型缺一张能公开引用的芯片对照。</p>
+    </article>
+    <footer class="drawers">
+      <section>
+        <h3>四时日月</h3>
+        <p class="plat">抖音</p>
+        <p class="count">在做 1 · 等你 1 · 卡住 1</p>
+        <p class="latest">最新 · 霜降：菜市场的萝卜</p>
+      </section>
+      <section>
+        <h3>隔洋看世界</h3>
+        <p class="plat">今日头条</p>
+        <p class="count">在剪 1 · 等你 1</p>
+        <p class="latest">最新 · BBC 镜头里的中国高铁</p>
+      </section>
+      <section>
+        <h3>大蒜粒机研所</h3>
+        <p class="plat">公众号</p>
+        <p class="count">在写 1 · 等你 1 · 卡住 1</p>
+        <p class="latest">最新 · 深读：HBM 供给是怎么卡上的</p>
+      </section>
+    </footer>
+  </div>
+</body>
+</html>

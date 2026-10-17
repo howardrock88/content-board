@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>概念 · 产线</title>
+  <style>
+    :root {
+      --floor: #12110f;
+      --tray: #1c1a17;
+      --ink: #f6f1e8;
+      --muted: #a39b90;
+      --line: #4a453e;
+      --accent: #ff4d1a;
+      --sans: Inter, "PingFang SC", "HarmonyOS Sans", "Noto Sans SC", "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif;
+      --mono: "JetBrains Mono", "Cascadia Mono", ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: var(--floor); color: var(--ink); }
+    body {
+      font-family: var(--sans);
+      letter-spacing: 0;
+      padding: 32px 40px 28px;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+    .top { display: flex; justify-content: space-between; align-items: baseline; color: var(--muted); font-size: 13px; }
+    .top b { color: var(--ink); font-weight: 600; }
+    h1 {
+      margin: 22px 0 0;
+      max-width: 14em;
+      font-size: 40px;
+      font-weight: 500;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+    .bench {
+      margin-top: 22px;
+      background: var(--tray);
+      border-radius: 20px;
+      padding: 16px 22px 8px;
+    }
+    .bench-label {
+      margin: 0;
+      color: var(--accent);
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+    .parts { display: grid; grid-template-columns: 1fr 1fr 1fr; }
+    .part { padding: 12px 22px 14px 0; }
+    .part + .part { padding-left: 22px; }
+    .part i {
+      display: block;
+      font-family: var(--mono);
+      font-style: normal;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .part strong { display: block; margin-top: 6px; font-size: 20px; font-weight: 500; line-height: 1.35; letter-spacing: 0; }
+    .part em { display: block; margin-top: 4px; color: var(--muted); font-style: normal; font-size: 13px; }
+    .lines { margin-top: 18px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+    .row { display: grid; grid-template-columns: 168px 1fr; gap: 18px; align-items: center; min-height: 0; }
+    .name { font-size: 20px; font-weight: 500; letter-spacing: 0; line-height: 1.25; }
+    .name small { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; font-weight: 400; }
+    .track { position: relative; padding-top: 36px; }
+    .stations { display: grid; grid-template-columns: repeat(4, 1fr); position: relative; }
+    .stations::before {
+      content: "";
+      position: absolute;
+      left: 12%;
+      right: 12%;
+      top: 6px;
+      height: 2px;
+      background: var(--line);
+    }
+    .station { text-align: center; position: relative; }
+    .dot {
+      width: 14px;
+      height: 14px;
+      margin: 0 auto;
+      border: 2px solid var(--ink);
+      border-radius: 50%;
+      background: var(--floor);
+      position: relative;
+      z-index: 1;
+    }
+    .station.is-live .dot { background: var(--ink); }
+    .station.is-bench .dot { background: var(--accent); border-color: var(--accent); }
+    .station b {
+      display: block;
+      min-height: 2.6em;
+      margin-top: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1.35;
+    }
+    .station small { display: block; margin-top: 2px; color: var(--muted); font-family: var(--mono); font-size: 11px; }
+    .station.is-bench small { color: var(--accent); }
+    .hold {
+      margin: 8px 0 0 12%;
+      color: var(--accent);
+      font-size: 13px;
+    }
+    .hold:empty { visibility: hidden; }
+  </style>
+</head>
+<body>
+  <p class="top"><span><b>内容</b> · 产线</span><span>十月十七日 · 星期六 · 北京</span></p>
+  <h1>三件停在你的工位。两件被抬下了线。</h1>
+  <section class="bench">
+    <p class="bench-label">你的工位 · 待验收</p>
+    <div class="parts">
+      <div class="part"><i>01</i><strong>寒露：三个早睡动作</strong><em>四时日月</em></div>
+      <div class="part"><i>02</i><strong>外媒标题核对清单</strong><em>隔洋看世界</em></div>
+      <div class="part"><i>03</i><strong>为什么机器人公司都在囤数据</strong><em>大蒜粒机研所</em></div>
+    </div>
+  </section>
+  <div class="lines">
+    <section class="row">
+      <h2 class="name">四时日月<small>抖音</small></h2>
+      <div>
+        <div class="track">
+          <div class="stations">
+            <div class="station"><i class="dot"></i><b></b><small>待做</small></div>
+            <div class="station is-live"><i class="dot"></i><b>霜降：菜市场的萝卜</b><small>进行中</small></div>
+            <div class="station is-bench"><i class="dot"></i><b>在工位上</b><small>待验收</small></div>
+            <div class="station is-live"><i class="dot"></i><b>白露：秋梨膏</b><small>已发布</small></div>
+          </div>
+        </div>
+        <p class="hold">抬下来 · 秋分封面 · 安全区把标题裁了</p>
+      </div>
+    </section>
+    <section class="row">
+      <h2 class="name">隔洋看世界<small>今日头条</small></h2>
+      <div>
+        <div class="track">
+          <div class="stations">
+            <div class="station is-live"><i class="dot"></i><b>路透：机器人出口</b><small>待做</small></div>
+            <div class="station is-live"><i class="dot"></i><b>BBC 镜头里的高铁</b><small>进行中</small></div>
+            <div class="station is-bench"><i class="dot"></i><b>在工位上</b><small>待验收</small></div>
+            <div class="station is-live"><i class="dot"></i><b>县城咖啡</b><small>已发布</small></div>
+          </div>
+        </div>
+        <p class="hold"></p>
+      </div>
+    </section>
+    <section class="row">
+      <h2 class="name">大蒜粒机研所<small>公众号</small></h2>
+      <div>
+        <div class="track">
+          <div class="stations">
+            <div class="station is-live"><i class="dot"></i><b>灵巧手这一年</b><small>待做</small></div>
+            <div class="station is-live"><i class="dot"></i><b>HBM 供给</b><small>进行中</small></div>
+            <div class="station is-bench"><i class="dot"></i><b>在工位上</b><small>待验收</small></div>
+            <div class="station"><i class="dot"></i><b></b><small>已发布</small></div>
+          </div>
+        </div>
+        <p class="hold">抬下来 · 端侧模型 · 缺一张能公开引用的芯片对照</p>
+      </div>
+    </section>
+  </div>
+</body>
+</html>
