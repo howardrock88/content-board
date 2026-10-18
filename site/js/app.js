@@ -25,9 +25,11 @@ import {
   byUpdatedDesc,
   columnFor,
   commentsForIssue,
+  displayCommentBody,
   extractOutputLinks,
   finalStatusForIssue,
   isDoneStatus,
+  isShawnComment,
   labelsForStatus,
   laneMeta,
   LANES,
@@ -38,6 +40,7 @@ import {
   renderMarkdown,
   resolveStuckReason,
   shanghaiDayKey,
+  shawnCommentBody,
   stagesForLane,
   upsertSection,
 } from "./parse.js";
@@ -66,6 +69,10 @@ const state = {
   mobileChosen: false,
   openId: null,
   commentDraft: "",
+  forwardNote: "",
+  commentError: "",
+  sending: false,
+  setupOpen: PARAMS.has("setup"),
   dragActive: false,
 };
 
@@ -90,8 +97,15 @@ const els = {
   drawerContent: document.querySelector("#drawer-content"),
   drawerGithub: document.querySelector("#drawer-github"),
   drawerDemo: document.querySelector("#drawer-demo-note"),
+  commentForm: document.querySelector("#comment-form"),
+  commentSetup: document.querySelector("#comment-setup"),
+  commentCompose: document.querySelector("#comment-compose"),
   commentBody: document.querySelector("#comment-body"),
   commentSubmit: document.querySelector("#comment-submit"),
+  commentNote: document.querySelector("#comment-note"),
+  showSetup: document.querySelector("#show-setup"),
+  setupBack: document.querySelector("#setup-back"),
+  setupDemo: document.querySelector("#setup-demo"),
   toast: document.querySelector("#toast"),
   palette: document.querySelector("#palette"),
   paletteQ: document.querySelector("#palette-q"),
@@ -421,10 +435,17 @@ function ownerName(issue) {
   return issue.owners.length ? issue.owners.join("、") : "未指定";
 }
 
+function commentCountChip(issue) {
+  const count = state.comments.filter((comment) => comment.issueNumber === issue.number).length;
+  if (!count) return null;
+  return h("span", { class: "when comment-count" }, `${count} 条评论`);
+}
+
 function issueFacts(issue) {
   return h("span", { class: "chips" }, [
     laneChip(issue.lanes[0]),
     statusChip(columnFor(issue)),
+    commentCountChip(issue),
     h("span", { class: "when" }, relativeTime(issue.updatedAt)),
   ]);
 }
@@ -633,8 +654,8 @@ function activityEvents(visible) {
       at: comment.createdAt,
       title: issue.title,
       number: issue.number,
-      excerpt: excerpt(comment.body),
-      who: comment.user,
+      excerpt: excerpt(displayCommentBody(comment.body)),
+      who: isShawnComment(comment.body) ? "Shawn" : comment.user,
       lane: issue.lanes[0] || "",
       stuck: /卡住原因\s*[:：]/.test(comment.body || ""),
     });
@@ -741,6 +762,7 @@ function renderMini(issue) {
     avatar(ownerName(issue), issue.lanes[0]),
     laneChip(issue.lanes[0]),
     statusChip(column),
+    commentCountChip(issue),
     h("span", { class: "when" }, [relativeTime(issue.updatedAt), flags.join(" · ")].filter(Boolean).join(" · ")),
   ]));
   if (column === "卡住") {
@@ -761,10 +783,36 @@ function renderLists() {
 
 
 function openDrawer(number) {
-  if (state.openId !== number) state.commentDraft = "";
+  if (state.openId !== number) {
+    state.commentDraft = "";
+    state.forwardNote = "";
+    state.commentError = "";
+  }
   state.openId = number;
+  state.scrollThread = true;
   fillDrawer(number);
   if (!els.drawer.open) els.drawer.showModal();
+}
+
+function relayTarget(issue) {
+  const bots = (issue?.owners || []).filter((name) => name && name !== "Shawn");
+  return bots.length ? bots.join("、") : "负责人";
+}
+
+function syncComposer() {
+  const setup = !state.writable || state.setupOpen;
+  els.commentSetup.hidden = !setup;
+  els.commentCompose.hidden = setup;
+  els.showSetup.hidden = !state.demo;
+  els.setupBack.hidden = !state.demo;
+  els.setupDemo.hidden = !state.demo;
+  const failed = Boolean(state.commentError);
+  els.commentNote.textContent = state.commentError || state.forwardNote || "";
+  els.commentNote.classList.toggle("is-error", failed);
+  els.commentNote.classList.toggle("is-ok", Boolean(state.forwardNote) && !failed);
+  els.commentBody.disabled = !state.writable || state.sending;
+  els.commentSubmit.disabled = !state.writable || state.sending;
+  if (document.activeElement !== els.commentBody) els.commentBody.value = state.commentDraft;
 }
 
 function fillDrawer(number) {
@@ -775,12 +823,15 @@ function fillDrawer(number) {
   const links = extractOutputLinks(issue.body);
   const content = els.drawerContent;
   content.replaceChildren();
-  const tags = h("div", { class: "tags" });
-  for (const label of issue.lanes) tags.append(h("span", { class: "tag" }, laneChip(label)));
+  const meta = h("p", { class: "chips drawer-meta" });
+  if (issue.lanes.length) {
+    for (const lane of issue.lanes) meta.append(laneChip(lane));
+  } else meta.append(laneChip(""));
+  meta.append(statusChip(column), h("span", { class: "when" }, ownerName(issue)));
   content.append(
     h("p", { class: "drawer-kicker" }, `#${issue.number} · ${absoluteTime(issue.updatedAt)}`),
     h("h2", {}, issue.title),
-    tags,
+    meta,
   );
   if (column === "卡住") content.append(h("p", { class: "reason-callout" }, reason ? `卡住：${reason}` : "卡住：还没有写原因"));
   content.append(h("h3", { class: "section-label" }, "移动到"));
@@ -793,7 +844,7 @@ function fillDrawer(number) {
     moves.append(button);
   }
   content.append(moves);
-  if (!state.writable) content.append(h("p", { class: "hint" }, "只读。设置里粘贴 Token 后可以改状态。"));
+  if (!state.writable) content.append(h("p", { class: "hint" }, "只读。下面保存 Token 后可以改状态。"));
   if (links.length) {
     content.append(h("h3", { class: "section-label" }, "产出链接"));
     const list = h("div", { class: "output-links" });
@@ -803,33 +854,37 @@ function fillDrawer(number) {
   const bodyView = h("div", { class: "markdown" });
   bodyView.innerHTML = renderMarkdown(issue.body || "（这条议题还没有正文。）");
   content.append(h("h3", { class: "section-label" }, "正文"), bodyView);
-  content.append(h("h3", { class: "section-label" }, "进度"));
+  content.append(h("h3", { class: "section-label" }, "评论"));
   const timeline = commentsForIssue(state.comments, issue.number);
-  if (!timeline.length) content.append(h("p", { class: "hint" }, "还没有进度评论。"));
-  else {
-    const list = h("ol", { class: "timeline" });
-    for (const comment of timeline) {
-      const item = h("li");
-      item.append(h("p", { class: "who" }, `${comment.user} · ${relativeTime(comment.createdAt)} · ${absoluteTime(comment.createdAt)}`));
-      const body = h("div", { class: "markdown" });
-      body.innerHTML = renderMarkdown(comment.body || "");
-      item.append(body);
-      list.append(item);
-    }
-    content.append(list);
-  }
+  if (!timeline.length) content.append(h("p", { class: "hint" }, "还没有评论。"));
+  else content.append(renderThread(timeline));
   els.drawerGithub.hidden = state.demo;
   els.drawerDemo.hidden = !state.demo;
   if (!state.demo) els.drawerGithub.href = issue.htmlUrl || `https://github.com/howardrock88/content-board/issues/${issue.number}`;
-  const box = els.commentBody;
-  box.disabled = !state.writable;
-  els.commentSubmit.disabled = !state.writable;
-  box.placeholder = state.demo
-    ? "示例评论，只留在这个页面"
-    : state.writable
-      ? "写这次做了什么、下一步是什么"
-      : "只读。在设置里粘贴 Token 后可以写评论。";
-  if (document.activeElement !== box) box.value = state.commentDraft;
+  els.commentBody.placeholder = state.demo ? "示例评论，只留在这个页面" : "写给负责这条的机器人";
+  syncComposer();
+  if (state.scrollThread) {
+    state.scrollThread = false;
+    content.querySelector(".timeline li:last-child")?.scrollIntoView({ block: "nearest" });
+  }
+}
+
+function renderThread(timeline) {
+  const list = h("ol", { class: "timeline" });
+  for (const comment of timeline) {
+    const shawn = isShawnComment(comment.body);
+    const item = h("li", { class: shawn ? "is-shawn" : "is-bot" });
+    const who = h("p", { class: "who" });
+    who.append(h("span", { class: shawn ? "who-badge is-shawn" : "who-badge" }, shawn ? "Shawn" : "机器人"));
+    if (!shawn && comment.user) who.append(h("span", { class: "who-name" }, comment.user));
+    who.append(h("span", { title: absoluteTime(comment.createdAt) }, relativeTime(comment.createdAt)));
+    item.append(who);
+    const body = h("div", { class: "markdown" });
+    body.innerHTML = renderMarkdown(displayCommentBody(comment.body) || "");
+    item.append(body);
+    list.append(item);
+  }
+  return list;
 }
 
 function replaceIssue(issue) {
@@ -909,29 +964,74 @@ async function commitStatus(number, status) {
   }
 }
 
-function localComment(number, body) {
+function localComment(number, body, user = "本机") {
   const now = new Date().toISOString();
-  return { id: `local-${number}-${Date.now()}`, issueNumber: number, body, createdAt: now, updatedAt: now, user: state.demo ? "Shawn" : "本机" };
+  return { id: `local-${number}-${Date.now()}`, issueNumber: number, body, createdAt: now, updatedAt: now, user };
 }
 
 async function submitComment(event) {
   event.preventDefault();
-  const body = els.commentBody.value.trim();
-  const number = state.openId;
-  if (!body || !number || !state.writable) return;
-  try {
-    const comment = state.demo ? { ...localComment(number, body), user: "Shawn" } : await createComment(number, body, getToken());
-    state.comments.push(comment);
-    const issue = state.issues.find((item) => item.number === number);
-    if (issue) issue.updatedAt = comment.createdAt;
-    state.commentDraft = "";
-    els.commentBody.value = "";
-    if (!state.demo) persist();
-    renderLists();
-    toast(state.demo ? "示例评论已留在这个页面" : "评论已发布");
-  } catch (error) {
-    toast(error.message || "评论没发出去");
+  if (!els.commentSetup.hidden) {
+    await saveDrawerToken();
+    return;
   }
+  const text = els.commentBody.value.trim();
+  const number = state.openId;
+  if (!text || !number || !state.writable || state.sending) return;
+  const body = shawnCommentBody(text);
+  const optimistic = localComment(number, body, "Shawn");
+  const issue = state.issues.find((item) => item.number === number);
+  const previousUpdated = issue?.updatedAt;
+  state.comments.push(optimistic);
+  if (issue) issue.updatedAt = optimistic.createdAt;
+  state.commentDraft = "";
+  els.commentBody.value = "";
+  state.commentError = "";
+  state.forwardNote = `已发送，会在几分钟内转给 ${relayTarget(issue)}`;
+  state.scrollThread = true;
+  renderLists();
+  if (state.demo) return;
+  state.sending = true;
+  syncComposer();
+  try {
+    const comment = await createComment(number, body, getToken());
+    state.comments = state.comments.filter((item) => item.id !== optimistic.id);
+    state.comments.push(comment);
+    if (issue) issue.updatedAt = comment.createdAt || optimistic.createdAt;
+    persist();
+    state.scrollThread = true;
+    renderLists();
+  } catch (error) {
+    state.comments = state.comments.filter((item) => item.id !== optimistic.id);
+    if (issue && previousUpdated) issue.updatedAt = previousUpdated;
+    state.commentDraft = text;
+    els.commentBody.value = text;
+    state.forwardNote = "";
+    state.commentError = error.message || "没发出去，请再试一次。";
+    renderLists();
+  } finally {
+    state.sending = false;
+    syncComposer();
+  }
+}
+
+async function saveDrawerToken() {
+  const input = document.querySelector("#drawer-token");
+  const message = document.querySelector("#drawer-token-message");
+  const token = input.value.trim();
+  if (token.length < 20) {
+    message.textContent = "Token 太短。请粘贴 fine-grained personal access token。";
+    return;
+  }
+  message.textContent = "正在检查…";
+  const result = await probeToken(token);
+  message.textContent = result.message;
+  if (!result.ok) return;
+  setToken(token);
+  input.value = "";
+  state.writable = true;
+  state.setupOpen = false;
+  renderLists();
 }
 
 async function submitNew(event) {
@@ -1349,8 +1449,26 @@ function bootDialogs() {
   });
   document.querySelector("#composer-form").addEventListener("submit", submitNew);
   document.querySelector("#comment-form").addEventListener("submit", submitComment);
+  document.querySelector("#drawer-token-save").addEventListener("click", saveDrawerToken);
+  els.showSetup.addEventListener("click", () => {
+    state.setupOpen = true;
+    if (state.openId) fillDrawer(state.openId);
+  });
+  els.setupBack.addEventListener("click", () => {
+    state.setupOpen = false;
+    if (state.openId) fillDrawer(state.openId);
+  });
   els.commentBody.addEventListener("input", () => {
     state.commentDraft = els.commentBody.value;
+    if (state.commentError) {
+      state.commentError = "";
+      syncComposer();
+    }
+  });
+  els.commentBody.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" || !(event.metaKey || event.ctrlKey)) return;
+    event.preventDefault();
+    els.commentForm.requestSubmit();
   });
   document.querySelector("#drawer-close").addEventListener("click", () => els.drawer.close());
   els.drawer.addEventListener("click", (event) => {
@@ -1361,6 +1479,8 @@ function bootDialogs() {
   els.drawer.addEventListener("close", () => {
     const id = state.openId;
     state.openId = null;
+    state.forwardNote = "";
+    state.commentError = "";
     document.querySelector(`[data-id="${id}"]`)?.focus();
   });
   for (const button of document.querySelectorAll("[data-close]")) {

@@ -21,8 +21,11 @@ import {
   OWNER_LABELS,
   relativeTime,
   absoluteTime,
+  displayCommentBody,
+  isShawnComment,
   renderMarkdown,
   resolveStuckReason,
+  shawnCommentBody,
   STATUS_LABELS,
   upsertSection,
 } from "../site/js/parse.js";
@@ -164,6 +167,18 @@ test("demo desk covers every column and shows comment reasons", () => {
   const related = comments.filter((comment) => comment.issueNumber === 126);
   assert.equal(resolveStuckReason(stuck.body, related), "抖音封面安全区把标题裁掉了，等 Shawn 定一行不超过 8 个字的标题。");
   assert.ok(issues.filter((issue) => attentionKind(issue)).length >= 5);
+});
+
+test("board comments carry the Shawn marker and hide it when shown", () => {
+  const posted = shawnCommentBody("  开头改一下\n今天给 ");
+  assert.equal(posted, "【Shawn】\n开头改一下\n今天给");
+  assert.equal(isShawnComment(posted), true);
+  assert.equal(isShawnComment("【Shawn】"), true);
+  assert.equal(isShawnComment("卡住原因：封面太长"), false);
+  assert.equal(isShawnComment("口播已录。\n【Shawn】\n不是开头"), false);
+  assert.equal(displayCommentBody(posted), "开头改一下\n今天给");
+  assert.equal(displayCommentBody("口播已录。"), "口播已录。");
+  assert.equal(displayCommentBody("【Shawn】"), "");
 });
 
 test("parses a GitHub link header", () => {

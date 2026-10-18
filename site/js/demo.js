@@ -234,6 +234,13 @@ Shawn 已通过。文章不标已发布，写作 bot 标成已完成。
       body: "口播已录。字幕还差「少糖」那三句，录完就交审核。",
     }),
     comment({
+      id: 7,
+      issue: 128,
+      user: "howardrock88",
+      createdAt: ago(now, 0.4),
+      body: "【Shawn】\n开头用菜市场的萝卜，不要从汤讲起。字幕三句今天给。",
+    }),
+    comment({
       id: 2,
       issue: 126,
       user: "视频运营",
