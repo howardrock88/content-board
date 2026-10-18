@@ -277,6 +277,28 @@ export function commentsForIssue(comments, number) {
     .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
 }
 
+const SHAWN_MARK = "【Shawn】";
+
+function normalizedCommentBody(body) {
+  return String(body ?? "").replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
+}
+
+export function shawnCommentBody(text) {
+  return `${SHAWN_MARK}\n${String(text ?? "").trim()}`;
+}
+
+export function isShawnComment(body) {
+  const text = normalizedCommentBody(body);
+  return text === SHAWN_MARK || text.startsWith(`${SHAWN_MARK}\n`);
+}
+
+export function displayCommentBody(body) {
+  const text = normalizedCommentBody(body);
+  if (text.startsWith(`${SHAWN_MARK}\n`)) return text.slice(SHAWN_MARK.length + 1);
+  if (text === SHAWN_MARK) return "";
+  return text;
+}
+
 export function shanghaiDayKey(date) {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Shanghai",

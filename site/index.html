@@ -98,9 +98,33 @@
       </div>
       <article id="drawer-content" class="drawer-scroll"></article>
       <form id="comment-form" class="comment-form">
-        <label for="comment-body">进度评论</label>
-        <textarea id="comment-body" rows="3" maxlength="4000" placeholder="写这次做了什么、下一步是什么"></textarea>
-        <button id="comment-submit" type="submit">发表评论</button>
+        <div id="comment-setup" class="comment-setup" hidden>
+          <p id="setup-lead">评论会转给负责这条的机器人。Token 只留在这台浏览器。</p>
+          <p id="setup-demo" class="hint" hidden>当前是示例，发送仍只留在这个页面。</p>
+          <a id="token-create" class="token-link" href="https://github.com/settings/personal-access-tokens/new?name=%E5%86%85%E5%AE%B9%E7%9C%8B%E6%9D%BF&amp;description=%E5%8F%AA%E7%94%A8%E4%BA%8E%E5%86%85%E5%AE%B9%E7%9C%8B%E6%9D%BF%E8%AF%84%E8%AE%BA%E4%B8%8E%E6%94%B9%E7%8A%B6%E6%80%81&amp;target_name=howardrock88&amp;expires_in=none&amp;issues=write" target="_blank" rel="noopener noreferrer">创建 Token</a>
+          <ol>
+            <li>仓库只选 howardrock88/content-board。</li>
+            <li>权限：Issues 读写。</li>
+            <li>有效期选长期。</li>
+          </ol>
+          <label for="drawer-token">粘贴 Token</label>
+          <input id="drawer-token" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…">
+          <div class="comment-actions">
+            <button id="setup-back" type="button" hidden>返回</button>
+            <button id="drawer-token-save" type="button">保存</button>
+          </div>
+          <p id="drawer-token-message" class="hint" role="status"></p>
+        </div>
+        <div id="comment-compose" class="comment-compose">
+          <label for="comment-body">评论</label>
+          <textarea id="comment-body" rows="2" maxlength="4000" placeholder="写给负责这条的机器人"></textarea>
+          <div class="comment-actions">
+            <p id="comment-note" class="comment-note" role="status"></p>
+            <button id="show-setup" type="button" class="text-btn" hidden>启用 Token</button>
+            <button id="comment-submit" type="submit">发送</button>
+          </div>
+          <p class="hint comment-hint">⌘/Ctrl + Enter 发送</p>
+        </div>
       </form>
     </dialog>
 
